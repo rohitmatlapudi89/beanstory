@@ -1,0 +1,1212 @@
+<title>Beanstory</title>
+<meta name="description" content="Change altitude, processing, roast and varietal, then dive from the coffee cherry into the bean and down to its cells.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a full-bleed specimen stage. Frosted instrument panels float over it:
+   the bag on the left, the recipe on the right, the reading at the bottom. */
+:root{
+  --bg:#0c0908;           /* roasted near-black, warm bias */
+  --ink:#f1e7dd;          /* crema white */
+  --muted:#ab998c;
+  --faint:#76665b;
+  --panel:rgba(24,18,15,.74);
+  --panel-solid:#18120f;
+  --line:rgba(241,231,221,.10);
+  --line-strong:rgba(241,231,221,.20);
+  --crema:#eaa95e;        /* accent: crema / caramel */
+  --crema-ink:#1b120c;
+  --cherry:#d23b48;
+  --leaf:#a3cf9b;
+  --glow:#ffdcb0;
+  --f-display:'Bricolage Grotesque', 'Avenir Next Condensed', 'Arial Narrow', sans-serif;
+  --f-body:'Figtree', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --f-mono:'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --r:14px;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--crema);outline-offset:2px}
+
+/* ---------- shell ---------- */
+.shell{position:fixed;inset:0;overflow:hidden}
+.stage{position:absolute;inset:0;overflow:hidden;background:radial-gradient(120% 90% at 50% 40%, #1c1411 0%, var(--bg) 62%)}
+#scene{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;transition:filter .2s}
+.vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(90% 80% at 50% 45%, transparent 55%, rgba(5,3,2,.55) 100%)}
+#veil{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 45%, rgba(234,169,94,.18), rgba(12,9,8,.96) 55%)}
+
+.panel{position:absolute;background:var(--panel);backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.panel-scroll{overflow:auto;scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent}
+
+/* ---------- left: bag controls ---------- */
+.bag{left:20px;top:20px;bottom:20px;width:300px;display:flex;flex-direction:column}
+.brand{padding:20px 20px 14px;border-bottom:1px solid var(--line)}
+.brand h1{margin:0;font-family:var(--f-display);font-weight:800;font-size:30px;letter-spacing:-.02em;line-height:1;font-variation-settings:'opsz' 96}
+.brand h1 span{color:var(--crema)}
+.brand p{margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.45;text-wrap:pretty}
+.bag-body{padding:6px 20px 20px;display:flex;flex-direction:column;gap:22px;flex:1;min-height:0}
+.field{display:flex;flex-direction:column;gap:8px}
+.field-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.label{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.readout{font-family:var(--f-mono);font-size:12px;color:var(--ink);font-variant-numeric:tabular-nums}
+.hint-line{font-size:12px;color:var(--faint);line-height:1.4}
+.hint-line b{color:var(--muted);font-weight:600}
+.field:first-child{padding-top:14px}
+
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:var(--track,var(--line-strong))}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:var(--track,var(--line-strong))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--ink);margin-top:-6px;box-shadow:0 0 0 4px rgba(234,169,94,.25)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radius:50%;background:var(--ink);box-shadow:0 0 0 4px rgba(234,169,94,.25)}
+#altitude{--track:linear-gradient(90deg,#4a6b3e 0%,#7c8f52 33%,#9aa7a8 66%,#d7e2ea 100%)}
+.ticks{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:10px;color:var(--faint);margin-top:-2px}
+
+select{width:100%;appearance:none;-webkit-appearance:none;background:rgba(241,231,221,.05) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23ab998c' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 12px center;border:1px solid var(--line-strong);border-radius:10px;padding:9px 32px 9px 12px;font-size:14px}
+select option{background:var(--panel-solid);color:var(--ink)}
+
+.toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
+.toggle input{accent-color:var(--crema);width:14px;height:14px;margin:0}
+.agtron-box{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:10px;background:rgba(241,231,221,.04);border:1px solid var(--line)}
+#agtron{--track:linear-gradient(90deg,#2a1810,#4a2c1a 30%,#7a4a2a 57%,#a0683e 75%,#c79a68)}
+.agtron-scale{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:10px;color:var(--faint)}
+
+.chip-search{width:100%;background:rgba(241,231,221,.05);border:1px solid var(--line-strong);border-radius:10px;padding:8px 12px;font-size:13px}
+.chip-search::placeholder{color:var(--faint)}
+.chip-groups{display:flex;flex-direction:column;gap:12px}
+.chip-group h3{margin:0 0 6px;font-size:11px;font-weight:500;color:var(--faint);letter-spacing:.04em}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line-strong);background:transparent;border-radius:999px;padding:4px 10px;font-size:12.5px;color:var(--muted);transition:background .15s,color .15s,border-color .15s}
+.chip:hover{color:var(--ink);border-color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--crema);color:var(--crema-ink);border-color:var(--crema);font-weight:600}
+.preview-note{margin-top:auto;font-size:12px;color:var(--muted);line-height:1.45;padding:10px 12px;border-radius:10px;border:1px dashed var(--line-strong)}
+
+/* ---------- top: layer navigator ---------- */
+.layers{position:absolute;top:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:0;padding:5px;border-radius:999px;background:var(--panel);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--line);z-index:3}
+.layer-btn{display:flex;align-items:center;gap:9px;border:0;background:transparent;border-radius:999px;padding:7px 15px 7px 8px;color:var(--muted);transition:background .2s,color .2s;white-space:nowrap}
+.layer-btn .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-mono);font-size:11px;border:1px solid var(--line-strong)}
+.layer-btn .t{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1}
+.layer-btn .t b{font-weight:600;font-size:13.5px}
+.layer-btn .t small{font-family:var(--f-mono);font-size:10px;color:var(--faint)}
+.layer-btn[aria-selected="true"]{background:var(--ink);color:var(--crema-ink)}
+.layer-btn[aria-selected="true"] .n{background:var(--crema);border-color:var(--crema);color:var(--crema-ink)}
+.layer-btn[aria-selected="true"] .t small{color:#6b5444}
+.layer-btn:not([aria-selected="true"]):hover{color:var(--ink)}
+.connector{width:18px;height:1px;background:var(--line-strong);flex:none}
+
+/* ---------- callouts ---------- */
+#callout-lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+#callouts{position:absolute;inset:0;pointer-events:none}
+.callout{position:absolute;left:0;top:0;pointer-events:auto;display:flex;align-items:center;gap:7px;padding:5px 11px 5px 9px;border-radius:999px;background:rgba(14,10,9,.82);border:1px solid rgba(255,220,176,.28);color:var(--ink);font-size:12px;font-weight:600;white-space:nowrap;transition:opacity .35s,border-color .2s,background .2s;will-change:transform;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.callout i{width:7px;height:7px;border-radius:50%;background:var(--sw,var(--glow));box-shadow:0 0 10px var(--sw,var(--glow));flex:none}
+.callout small{font-family:var(--f-mono);font-weight:400;font-size:10px;color:var(--muted)}
+.callout:hover,.callout.active{border-color:var(--crema);background:rgba(40,26,18,.92)}
+.callout.active small{color:var(--glow)}
+
+/* ---------- scale bar & hints ---------- */
+.scalebar{position:absolute;display:flex;flex-direction:column;align-items:flex-start;gap:4px;pointer-events:none;font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.scalebar .bar{height:6px;border:1.5px solid var(--muted);border-top:0}
+.keys{position:absolute;font-size:11.5px;color:var(--faint);pointer-events:none}
+.keys kbd{font-family:var(--f-mono);font-size:10.5px;border:1px solid var(--line-strong);border-radius:4px;padding:0 4px;color:var(--muted)}
+
+/* ---------- bottom: explanation ---------- */
+.explain{left:340px;right:370px;bottom:20px;max-height:min(36vh,330px);display:flex;flex-direction:column}
+.explain-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 20px 0}
+.eyebrow{font-family:var(--f-mono);font-size:11px;color:var(--crema);letter-spacing:.04em}
+.explain h2{margin:4px 0 0;font-family:var(--f-display);font-weight:700;font-size:22px;letter-spacing:-.01em;line-height:1.15;text-wrap:balance}
+.back-btn{border:1px solid var(--line-strong);background:transparent;border-radius:999px;padding:4px 11px;font-size:12px;color:var(--muted);flex:none}
+.back-btn:hover{color:var(--ink)}
+.explain-body{padding:10px 20px 18px;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;min-height:0}
+.explain-text{min-width:0}
+.explain-text p{margin:0 0 9px;color:#d8ccc1;max-width:64ch;text-wrap:pretty}
+.explain-text p:last-child{margin-bottom:0}
+.explain-text b{color:var(--ink)}
+.side-box{display:flex;flex-direction:column;gap:12px;min-width:0}
+.v60-box{border-left:2px solid var(--crema);padding:2px 0 2px 12px;font-size:13px;color:#d8ccc1}
+.v60-box .label{display:block;color:var(--crema);margin-bottom:3px}
+.meters{display:flex;flex-direction:column;gap:9px}
+.meter{display:grid;grid-template-columns:92px 1fr 34px;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.meter .track{height:5px;border-radius:5px;background:var(--line);overflow:hidden}
+.meter .fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#8a5a34,var(--crema))}
+.meter .v{font-family:var(--f-mono);font-size:11px;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px}
+.legend button{display:flex;align-items:center;gap:7px;border:0;background:transparent;padding:0;font-size:12px;color:var(--muted);text-align:left}
+.legend button:hover{color:var(--ink)}
+.legend i{width:9px;height:9px;border-radius:50%;flex:none;background:var(--sw);box-shadow:0 0 8px var(--sw)}
+
+/* ---------- right: recipe ---------- */
+.recipe{right:20px;top:20px;bottom:20px;width:330px;display:flex;flex-direction:column}
+.recipe-head{padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+.recipe-head .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.recipe-head h2{margin:0;font-family:var(--f-display);font-weight:700;font-size:22px;letter-spacing:-.01em}
+.badge{font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid rgba(234,169,94,.45);color:var(--crema)}
+.bag-line{margin-top:6px;font-size:12.5px;color:var(--muted)}
+.recipe-body{padding:16px 20px 20px;display:flex;flex-direction:column;gap:20px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.stat{background:var(--panel-solid);padding:10px 10px 9px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat .k{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.stat .v{font-family:var(--f-mono);font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.stat .s{font-size:11px;color:var(--muted);line-height:1.25}
+.section-title{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.pour-chart{width:100%;height:auto;display:block}
+.pours{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.pours li{display:grid;grid-template-columns:44px 52px 1fr;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:12.5px;align-items:baseline}
+.pours li:first-child{border-top:0}
+.pours .tm{font-family:var(--f-mono);color:var(--crema);font-variant-numeric:tabular-nums}
+.pours .g{font-family:var(--f-mono);color:var(--ink);font-variant-numeric:tabular-nums}
+.pours .d{color:#d8ccc1;line-height:1.4}
+.pours .d small{display:block;color:var(--faint);font-size:11.5px;margin-top:2px}
+.why{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+.why li{font-size:12.5px;color:#d8ccc1;line-height:1.45;padding-left:14px;position:relative}
+.why li::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;background:var(--crema)}
+.why b{color:var(--ink);font-weight:600}
+.fix{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fix div{border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:12px;color:var(--muted);line-height:1.4}
+.fix b{display:block;color:var(--ink);font-size:12.5px;margin-bottom:2px}
+.gear{display:flex;flex-wrap:wrap;gap:6px}
+.gear span{font-size:11.5px;padding:3px 9px;border-radius:999px;background:rgba(241,231,221,.06);color:var(--muted)}
+
+/* ---------- narrow screens: stack ---------- */
+@media (max-width:1099px){
+  .shell{position:static;overflow:visible;display:flex;flex-direction:column;gap:14px;padding-inline:16px;padding-block:0 24px}
+  .stage{position:relative;inset:auto;height:62vh;height:62svh;min-height:380px;margin-inline:-16px;order:0}
+  .panel{position:relative;inset:auto;left:auto;right:auto;top:auto;bottom:auto;width:auto;max-height:none;box-shadow:none}
+  .explain{order:1}
+  .bag{order:2}
+  .recipe{order:3}
+  .panel-scroll{overflow:visible}
+  .layers{top:12px;max-width:calc(100% - 24px)}
+  .layer-btn{padding:6px 10px 6px 6px}
+  .layer-btn .t small{display:none}
+  .connector{width:8px}
+  .explain-body{grid-template-columns:minmax(0,1fr)}
+  .keys{display:none}
+  .callout{font-size:11px;padding:4px 9px 4px 7px}
+  .callout small{display:none}
+}
+@media (max-width:420px){
+  .layer-btn .n{display:none}
+  .layer-btn{padding:6px 12px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important}
+}
+</style>
+
+<div class="shell">
+  <div class="stage" id="stage">
+    <canvas id="scene" aria-label="3D view of the coffee cherry, bean and cell structure"></canvas>
+    <div class="vignette"></div>
+    <svg id="callout-lines" aria-hidden="true"></svg>
+    <div id="callouts"></div>
+    <div id="veil"></div>
+
+    <nav class="layers" role="tablist" aria-label="Zoom level">
+      <button class="layer-btn" role="tab" id="tab-0" data-layer="0" aria-selected="true"><span class="n">1</span><span class="t"><b>Cherry</b><small>≈ 15 mm</small></span></button>
+      <span class="connector" aria-hidden="true"></span>
+      <button class="layer-btn" role="tab" id="tab-1" data-layer="1" aria-selected="false"><span class="n">2</span><span class="t"><b>Bean</b><small>≈ 10 mm</small></span></button>
+      <span class="connector" aria-hidden="true"></span>
+      <button class="layer-btn" role="tab" id="tab-2" data-layer="2" aria-selected="false"><span class="n">3</span><span class="t"><b>Chemistry</b><small>≈ 40 µm cells</small></span></button>
+    </nav>
+
+    <div class="scalebar" id="scalebar"><span id="scale-label">5 mm</span><div class="bar" id="scale-bar" style="width:80px"></div></div>
+    <div class="keys" id="keys">drag to orbit · scroll to zoom · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> layers · <kbd>R</kbd> reset view</div>
+  </div>
+
+  <aside class="panel bag" aria-label="Your bag of coffee">
+    <div class="brand">
+      <h1>Bean<span>story</span></h1>
+      <p>Enter what's printed on your bag. Dive from the cherry to the cells, then brew it on your V60.</p>
+    </div>
+    <div class="bag-body panel-scroll">
+      <div class="field">
+        <div class="field-head"><label class="label" for="altitude">Altitude</label><span class="readout" id="alt-out">1,000 MASL</span></div>
+        <input type="range" id="altitude" min="600" max="2400" step="50" value="1000">
+        <div class="ticks"><span>600</span><span>1200</span><span>1800</span><span>2400</span></div>
+        <div class="hint-line" id="alt-hint"></div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="process">Processing</label>
+        <select id="process"></select>
+        <div class="hint-line" id="process-hint"></div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="roast">Roast</label>
+        <select id="roast"></select>
+        <label class="toggle" for="agtron-on"><input type="checkbox" id="agtron-on" checked> I know the Agtron number</label>
+        <div class="agtron-box" id="agtron-box">
+          <div class="field-head"><label class="label" for="agtron">Agtron</label><span class="readout" id="agtron-out">65</span></div>
+          <input type="range" id="agtron" min="25" max="95" step="1" value="65">
+          <div class="agtron-scale"><span>25 dark</span><span>95 light</span></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-head"><span class="label" id="var-label">Varietal</span><span class="readout" id="var-count">2 selected</span></div>
+        <input class="chip-search" id="var-search" type="search" placeholder="Search varietals" aria-label="Search varietals">
+        <div class="chip-groups" id="var-groups" role="group" aria-labelledby="var-label"></div>
+      </div>
+
+      <div class="preview-note"><b>Interface preview.</b> The 3D model and recipe show the sample bag from your notes. In the next step they will respond to these controls.</div>
+    </div>
+  </aside>
+
+  <section class="panel explain" aria-live="polite">
+    <div class="explain-head">
+      <div><div class="eyebrow" id="ex-eyebrow"></div><h2 id="ex-title"></h2></div>
+      <button class="back-btn" id="ex-back" hidden>All callouts</button>
+    </div>
+    <div class="explain-body panel-scroll" id="ex-body"></div>
+  </section>
+
+  <aside class="panel recipe" aria-label="Ideal V60 recipe">
+    <div class="recipe-head">
+      <div class="row"><h2>Ideal V60 recipe</h2><span class="badge">Sample</span></div>
+      <div class="bag-line">1000 MASL · Cultured Natural · Agtron 65 · SL9 + Chandragiri</div>
+    </div>
+    <div class="recipe-body panel-scroll">
+      <div class="stats">
+        <div class="stat"><span class="k">Dose</span><span class="v">15 g</span></div>
+        <div class="stat"><span class="k">Water</span><span class="v">240 g</span></div>
+        <div class="stat"><span class="k">Ratio</span><span class="v">1:16</span></div>
+        <div class="stat"><span class="k">Temp</span><span class="v">90–91°</span><span class="s">°C, off boil</span></div>
+        <div class="stat"><span class="k">Grind</span><span class="v">20 clk</span><span class="s">C2S · sea salt</span></div>
+        <div class="stat"><span class="k">Time</span><span class="v">~2:40</span><span class="s">total</span></div>
+      </div>
+
+      <div>
+        <div class="section-title"><span class="label">Pour schedule</span><span class="readout">g / time</span></div>
+        <svg class="pour-chart" id="pour-chart" viewBox="0 0 300 150" role="img" aria-label="Cumulative water poured over time"></svg>
+        <ol class="pours" id="pours"></ol>
+      </div>
+
+      <div>
+        <div class="section-title"><span class="label">Why this recipe</span></div>
+        <ul class="why">
+          <li><b>1000 MASL + Cultured Natural:</b> airy cells, further weakened by microbes, shatter into fines. Grind coarser so the bed keeps flowing.</li>
+          <li><b>Agtron 65 + fermentation sugars:</b> soluble compounds sit right at the surface. 90–91 °C acts as a brake against bitter, "medicinal" notes.</li>
+          <li><b>SL9 + Chandragiri:</b> SL9's acids dissolve fast; Chandragiri's sugars and oils dissolve slowly. Pulse pours with waits hold water in the bed longer.</li>
+          <li><b>Fast filter:</b> the tabbed Hario 100W drains in 10–12 s, so the pauses do the work instead of the paper.</li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="section-title"><span class="label">If the cup tastes…</span></div>
+        <div class="fix">
+          <div><b>Sour, thin, watery</b>Grind finer, raise the water temperature, or swirl more.</div>
+          <div><b>Bitter, dry, hollow</b>Grind coarser, drop 2 °C, or pour more gently.</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title"><span class="label">Your gear</span></div>
+        <div class="gear"><span>Hario V60-02</span><span>Timemore C2S</span><span>Hario 100W tabbed filter</span></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/environments/RoomEnvironment.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   DATA
+   ===================================================================== */
+const PROCESSES = [
+  {id:'washed',   name:'Washed',            hint:'Fruit stripped off at once. Clean, dense, high malic and citric acid.'},
+  {id:'honey',    name:'Honey',             hint:'Skin removed, sticky mucilage left on while drying. Sweet, medium body.'},
+  {id:'natural',  name:'Natural',           hint:'Dried inside the whole cherry for weeks. Fruit sugars and esters soak in.'},
+  {id:'anaerobic',name:'Anaerobic',         hint:'Fermented in sealed, oxygen-free tanks. Funky, intense, extracts fast.'},
+  {id:'cultured', name:'Cultured Natural',  hint:'Natural fermented with selected yeasts or bacteria. Hyper-soluble, lots of fines.'},
+  {id:'monsooned',name:'Monsooned Malabar', hint:'Indian green coffee swollen by monsoon winds. Low acid, mellow, spongy.'},
+];
+const ROASTS = [
+  {id:'light',  name:'Light',        range:[75,95], def:80},
+  {id:'mlight', name:'Medium-light', range:[70,74], def:72},
+  {id:'medium', name:'Medium',       range:[60,69], def:65},
+  {id:'mdark',  name:'Medium-dark',  range:[55,59], def:57},
+  {id:'dark',   name:'Dark',         range:[25,54], def:45},
+];
+const VARIETALS = [
+  {group:'Indian', items:['SL9','S.795','Chandragiri','Cauvery (Catimor)','Sln.5B','Selection 6','Kent','Robusta S.274','CxR']},
+  {group:'Classic Arabica', items:['Typica','Bourbon','Yellow Bourbon','Caturra','Catuaí','Mundo Novo','Pacas','Pacamara','Maragogype','Castillo']},
+  {group:'African & exotic', items:['Ethiopian Landrace','74110 / 74112','SL28','SL34','Ruiru 11','Batian','Gesha','Wush Wush','Sidra','Pink Bourbon','Laurina','Eugenioides']},
+];
+const SAMPLE_RECIPE = {
+  pours:[
+    {t:0,   to:45,  dur:5,  name:'Bloom', how:'Fast circles, then a gentle swirl.', why:'Lets fermentation CO₂ escape so water can reach the cells.'},
+    {t:45,  to:110, dur:12, name:'Pour 1', how:'Slow concentric circles.', why:'Turbulence pulls out SL9’s fast fruit acids.'},
+    {t:90,  to:180, dur:15, name:'Pour 2', how:'Dead centre, steady stream.', why:'Wait 33 s first: Chandragiri sugars need time. Centre pour keeps fines still.'},
+    {t:135, to:240, dur:12, name:'Pour 3', how:'Dead centre, calm. Soft final swirl.', why:'Sweeps up the last heavy sweetness.'},
+  ],
+  drain:160
+};
+
+/* Explanations and callouts per layer. Text drawn from the user's notes. */
+const LAYERS = [
+  {
+    key:'cherry', name:'Cherry', scaleUnit:'mm', unitPerWorld:7.5,
+    eyebrow:'Layer 1 · Coffee cherry · ≈ 15 mm',
+    title:'The fruit decides what the seed soaks up',
+    body:[
+      'A coffee bean is the <b>seed of a cherry</b>. Between the red skin and the seed sit the pulp and a sticky, sugary <b>mucilage</b>. Processing decides how long the seed stays in contact with that fruit.',
+      'Your bag is a <b>Cultured Natural</b>. The whole cherry dried with <b>selected yeasts and bacteria</b>, often in sealed tanks. Fruit sugars, lactic and acetic acids and fruity <b>esters</b> moved through the porous parchment into the bean, and the microbes’ enzymes began softening its cell walls from the inside.'
+    ],
+    v60:'More soluble sugar and softer cells: this coffee gives up flavour quickly. Expect to brew cooler and coarser than a washed coffee.'
+  },
+  {
+    key:'bean', name:'Bean', scaleUnit:'mm', unitPerWorld:5,
+    eyebrow:'Layer 2 · Roasted bean, cut open · ≈ 10 mm',
+    title:'Altitude sets the density. Roast opens it up.',
+    body:[
+      'At <b>1000 MASL</b> warm nights keep the tree growing fast. Cells stretch thin and trap air, like a baguette rather than dense rye bread. That makes a <b>soft bean</b>.',
+      'Roasting to <b>Agtron 65</b> drove out moisture and expanded the bean while the Maillard reaction and caramelisation peaked. Add walls already weakened by fermentation and you get a <b>brittle sponge</b> that shatters into fines in the grinder.'
+    ],
+    meters:[['Density',32],['Porosity',72],['Fines risk',84],['Solubility',88]],
+    v60:'Fines clog paper and stall the drawdown. Grind coarser (sea salt) and avoid heavy agitation after the first pour.'
+  },
+  {
+    key:'cells', name:'Chemistry', scaleUnit:'µm', unitPerWorld:50,
+    eyebrow:'Layer 3 · Cell structure and chemistry · ≈ 40 µm cells',
+    title:'What sits in the gaps',
+    body:[
+      'The bean is a skeleton of <b>cellulose walls</b>, the insoluble "wood", with <b>cavities</b> between them. Water can’t dissolve the walls. It dissolves what is stored in the cavities.',
+      '<b>SL9</b> brings fast-dissolving phosphoric and citric acids. <b>Chandragiri</b> brings sucrose and oils that dissolve slowly. Fermentation added <b>lactic acid</b> (creamy body), controlled <b>acetic acid</b> (tropical, winey notes) and volatile <b>esters</b>. Roasting caramelised sugars, built <b>melanoidins</b> and filled cavities with <b>CO₂</b>.'
+    ],
+    legend:true,
+    v60:'Acids and esters leave first, sugars and oils last. Hold the bed wet long enough for the slow part without over-extracting the fast part.'
+  }
+];
+
+const SWATCH = {
+  wall:'#d9ad7c', cavity:'#8a6a52', lipid:'#f0a830', sugar:'#f6e2bd', acid:'#ffd84a',
+  co2:'#bfe3ff', melanoidin:'#9a5a35', aroma:'#ffa98a',
+  skin:'#e0424f', pulp:'#f2c79c', mucilage:'#e6b04a', parchment:'#efe1c2', silverskin:'#d9dccd', bean:'#b8c49a', cut:'#8a7a5a',
+  crust:'#b77a46'
+};
+const ACIDS = [
+  {name:'Citric', color:0xffd84a, css:'#ffd84a'},
+  {name:'Phosphoric', color:0x7fe3ff, css:'#7fe3ff'},
+  {name:'Malic', color:0xb8f05a, css:'#b8f05a'},
+  {name:'Lactic', color:0xfff3e2, css:'#fff3e2'},
+  {name:'Acetic', color:0xff9fb4, css:'#ff9fb4'},
+];
+
+const CALLOUTS = [
+  [ // cherry
+    {id:'skin', label:'Skin', tag:'exocarp', sw:SWATCH.skin, dx:-150, dy:-50,
+      title:'Skin (exocarp)', text:'A thin, waxy red skin. It turns from green to deep red as the cherry ripens. In a natural, it stays on and wraps the seed for weeks of drying.'},
+    {id:'pulp', label:'Pulp', tag:'mesocarp', sw:SWATCH.pulp, dx:-160, dy:30,
+      title:'Pulp (mesocarp)', text:'Sweet, juicy fruit flesh. Washed coffees have it stripped off by depulpers straight after picking. Naturals dry with it, and it ferments.'},
+    {id:'mucilage', label:'Mucilage', tag:'sugars · pectin', sw:SWATCH.mucilage, dx:-120, dy:80,
+      title:'Mucilage', text:'A sticky layer of sugars and pectin hugging the parchment. Fermentation happens here. In your cultured natural, starter cultures converted its glucose and fructose into <b>lactic and acetic acids</b> and fruity <b>esters</b>.'},
+    {id:'parchment', label:'Parchment', tag:'endocarp', sw:SWATCH.parchment, dx:-130, dy:-95,
+      title:'Parchment (endocarp)', text:'A papery husk around each seed. It is porous, so sugars and aromatic compounds from the fermenting fruit migrate <b>through the parchment and into the bean</b>.'},
+    {id:'bean', label:'Green bean', tag:'endosperm', sw:SWATCH.bean, dx:150, dy:-80,
+      title:'Green bean (endosperm)', text:'The seed itself: a dense capsule of water, acids, fats and sugars locked in a cellulose skeleton. Each cherry usually holds <b>two beans, flat sides facing</b>.'},
+    {id:'centercut', label:'Centre cut', tag:'fold', sw:SWATCH.cut, dx:170, dy:30,
+      title:'Centre cut', text:'The bean is a folded leaf of tissue. The fold shows as the crease on the flat side. Silverskin gets trapped inside it and comes out as chaff when roasting.'},
+    {id:'silverskin', label:'Silverskin', tag:'spermoderm', sw:SWATCH.silverskin, dx:150, dy:100,
+      title:'Silverskin', text:'A thin film over the bean. Most of it flakes off in the roaster as chaff. Bits stay inside the centre cut.'},
+  ],
+  [ // bean
+    {id:'matrix', label:'Cell matrix', tag:'cellulose', sw:SWATCH.wall, dx:-170, dy:-10,
+      title:'Cell matrix', text:'Tens of thousands of cells per bean. At 1000 MASL they grew fast, so their walls are <b>stretched thin</b> and leave more open space. The next layer zooms into these cells.'},
+    {id:'crust', label:'Surface', tag:'Maillard · caramel', sw:SWATCH.crust, dx:-110, dy:-70,
+      title:'Surface', text:'At Agtron 65 the outside is a medium brown and still dry. Sugars have caramelised and the Maillard reaction has built savoury-sweet compounds. Oil has not yet been pushed to the surface, as it would be in a dark roast.'},
+    {id:'centercut', label:'Centre cut', tag:'chaff inside', sw:SWATCH.silverskin, dx:-160, dy:70,
+      title:'Centre cut with chaff', text:'The fold in the bean, lined with leftover silverskin. A bright, pale centre cut often shows a lighter or quicker roast.'},
+    {id:'pores', label:'Pores & CO₂', tag:'gas', sw:SWATCH.co2, dx:160, dy:-70,
+      title:'Pores and trapped CO₂', text:'Roasting turns water into steam and builds up CO₂, which inflates the cells. A soft, fermented bean expands more, so it is <b>more porous</b> and degasses heavily. That is why your bloom is a long 45 s.'},
+    {id:'brittle', label:'Brittle zone', tag:'fines', sw:SWATCH.glow, dx:170, dy:60,
+      title:'Brittle walls and fines', text:'Thin, enzyme-weakened walls don’t snap cleanly. They shatter like dry glass, creating <b>micro-dust (fines)</b> that migrates to the filter and slows the drawdown.'},
+  ],
+  [ // cells
+    {id:'wall', label:'Cell wall', tag:'insoluble', sw:SWATCH.wall, dx:-160, dy:-70,
+      title:'Cell wall (cellulose)', text:'The insoluble "wood" of the bean. Water can’t dissolve it. Fast growth at low altitude left these walls <b>thin</b>, and fermentation enzymes <b>weakened</b> them further. A few have already ruptured.'},
+    {id:'cavity', label:'Cavity', tag:'the gap', sw:SWATCH.cavity, dx:-170, dy:50,
+      title:'Cavity (the "gap")', text:'The space inside each cell. Everything soluble lives here. Water has to get into the cavity to dissolve it. Open, porous cells let it in fast.'},
+    {id:'lipid', label:'Oils', tag:'lipids · slow', sw:SWATCH.lipid, dx:-40, dy:110,
+      title:'Oils (lipids)', text:'Coffee oils carry body and many aromas. <b>Chandragiri</b>, a Bourbon descendant, makes plenty of them. They release slowly and need contact time. Dark roasts push them out to the surface.'},
+    {id:'sugar', label:'Sugars', tag:'sucrose · caramel', sw:SWATCH.sugar, dx:160, dy:90,
+      title:'Sugars', text:'Sucrose from the plant plus simple sugars absorbed from the fruit during the natural process. These sugars are water-loving and dissolve almost instantly. At medium roast many are caramelised.'},
+    {id:'acid', label:'Organic acids', tag:'fast', sw:SWATCH.acid, dx:170, dy:-20,
+      title:'Organic acids', text:'<b>Phosphoric and citric</b> from SL9’s Ethiopian parentage, <b>lactic and acetic</b> from the cultured fermentation, some malic from the fruit. These dissolve first and are what you taste as brightness.'},
+    {id:'co2', label:'CO₂', tag:'trapped gas', sw:SWATCH.co2, dx:60, dy:-150,
+      title:'Carbon dioxide', text:'Made during roasting and fermentation and trapped in the cavities. When hot water hits, it rushes out and pushes water away. That is the bloom.'},
+    {id:'melanoidin', label:'Melanoidins', tag:'Maillard', sw:SWATCH.melanoidin, dx:160, dy:-110,
+      title:'Melanoidins', text:'Brown compounds from the Maillard reaction. They add colour, body and a roasty-sweet bitterness, and grow with roast degree.'},
+    {id:'aroma', label:'Aroma', tag:'esters · aldehydes', sw:SWATCH.aroma, dx:-120, dy:-120,
+      title:'Esters and aldehydes', text:'Volatile aroma compounds made in abundance by the cultured fermentation: pineapple, mango, winey notes. They are tiny, water-soluble and leave the bean almost instantly.'},
+  ],
+];
+
+/* =====================================================================
+   UI: CONTROLS
+   ===================================================================== */
+const $ = (s, el=document) => el.querySelector(s);
+const state = {
+  layer:0, altitude:1000, process:'cultured', roast:'medium', agtronOn:true, agtron:65,
+  varietals:new Set(['SL9','Chandragiri']), selected:null
+};
+
+const procSel = $('#process');
+PROCESSES.forEach(p => procSel.add(new Option(p.name, p.id)));
+procSel.value = state.process;
+const roastSel = $('#roast');
+ROASTS.forEach(r => roastSel.add(new Option(`${r.name} · Agtron ${r.range[0] >= 75 ? '75+' : r.range[0] <= 25 ? '≤ 54' : r.range[0] + '–' + r.range[1]}`, r.id)));
+roastSel.value = state.roast;
+
+function altZone(a){
+  if (a < 1200) return '<b>Low.</b> Warm nights, fast growth: a soft, porous bean.';
+  if (a < 1500) return '<b>Medium.</b> Moderate density, rounder acidity.';
+  if (a < 1800) return '<b>High.</b> Cold nights, slow growth: a hard, dense bean.';
+  return '<b>Very high (SHB).</b> Strictly hard bean: tight cells, bright complex acids.';
+}
+function updateBagUI(){
+  $('#alt-out').textContent = state.altitude.toLocaleString('en-US') + ' MASL';
+  $('#alt-hint').innerHTML = altZone(state.altitude);
+  $('#process-hint').textContent = PROCESSES.find(p => p.id === state.process).hint;
+  $('#agtron-out').textContent = state.agtron;
+  $('#agtron-box').hidden = !state.agtronOn;
+  $('#var-count').textContent = state.varietals.size + ' selected';
+}
+$('#altitude').addEventListener('input', e => { state.altitude = +e.target.value; updateBagUI(); });
+procSel.addEventListener('change', e => { state.process = e.target.value; updateBagUI(); });
+roastSel.addEventListener('change', e => {
+  state.roast = e.target.value;
+  state.agtron = ROASTS.find(r => r.id === state.roast).def;
+  $('#agtron').value = state.agtron; updateBagUI();
+});
+$('#agtron-on').addEventListener('change', e => { state.agtronOn = e.target.checked; updateBagUI(); });
+$('#agtron').addEventListener('input', e => {
+  state.agtron = +e.target.value;
+  const r = ROASTS.find(r => state.agtron >= r.range[0] && state.agtron <= r.range[1]) || ROASTS[0];
+  state.roast = r.id; roastSel.value = r.id; updateBagUI();
+});
+
+const groupsEl = $('#var-groups');
+function renderChips(){
+  const q = $('#var-search').value.trim().toLowerCase();
+  groupsEl.innerHTML = '';
+  VARIETALS.forEach(g => {
+    const items = g.items.filter(n => !q || n.toLowerCase().includes(q));
+    if (!items.length) return;
+    const wrap = document.createElement('div'); wrap.className = 'chip-group';
+    wrap.innerHTML = `<h3>${g.group}</h3>`;
+    const chips = document.createElement('div'); chips.className = 'chips';
+    items.forEach(n => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.textContent = n;
+      b.setAttribute('aria-pressed', state.varietals.has(n));
+      b.addEventListener('click', () => {
+        state.varietals.has(n) ? state.varietals.delete(n) : state.varietals.add(n);
+        b.setAttribute('aria-pressed', state.varietals.has(n)); updateBagUI();
+      });
+      chips.appendChild(b);
+    });
+    wrap.appendChild(chips); groupsEl.appendChild(wrap);
+  });
+  if (!groupsEl.children.length) groupsEl.innerHTML = '<div class="hint-line">No varietal matches that search.</div>';
+}
+$('#var-search').addEventListener('input', renderChips);
+renderChips(); updateBagUI();
+
+/* =====================================================================
+   UI: RECIPE
+   ===================================================================== */
+const fmtT = s => Math.floor(s/60) + ':' + String(Math.round(s%60)).padStart(2,'0');
+function renderRecipe(r){
+  const W = 300, H = 150, L = 34, R = 10, T = 12, B = 22;
+  const tMax = 180, gMax = 260;
+  const x = t => L + (t / tMax) * (W - L - R);
+  const y = g => T + (1 - g / gMax) * (H - T - B);
+  let d = `M${x(0)},${y(0)}`, g = 0;
+  r.pours.forEach(p => { d += ` L${x(p.t)},${y(g)} L${x(p.t + p.dur)},${y(p.to)}`; g = p.to; });
+  d += ` L${x(r.drain)},${y(g)}`;
+  const area = d + ` L${x(r.drain)},${y(0)} Z`;
+  let s = '';
+  [0,60,120,180].forEach(t => s += `<line x1="${x(t)}" x2="${x(t)}" y1="${T}" y2="${H-B}" stroke="var(--line)"/><text x="${x(t)}" y="${H-6}" fill="var(--faint)" font-size="9" font-family="var(--f-mono)" text-anchor="middle">${fmtT(t)}</text>`);
+  [0,120,240].forEach(v => s += `<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${y(v)+3}" fill="var(--faint)" font-size="9" font-family="var(--f-mono)" text-anchor="end">${v}</text>`);
+  s += `<defs><linearGradient id="pg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--crema)" stop-opacity=".35"/><stop offset="1" stop-color="var(--crema)" stop-opacity="0"/></linearGradient></defs>`;
+  s += `<path d="${area}" fill="url(#pg)"/><path d="${d}" fill="none" stroke="var(--crema)" stroke-width="2" stroke-linejoin="round"/>`;
+  r.pours.forEach(p => s += `<circle cx="${x(p.t + p.dur)}" cy="${y(p.to)}" r="3" fill="var(--crema)"/><text x="${x(p.t + p.dur) - 4}" y="${y(p.to) - 6}" fill="var(--ink)" font-size="9.5" font-family="var(--f-mono)" text-anchor="end">${p.to}g</text>`);
+  s += `<line x1="${x(r.drain)}" x2="${x(r.drain)}" y1="${y(g)}" y2="${y(0)}" stroke="var(--muted)" stroke-dasharray="2 3"/><text x="${x(r.drain) - 4}" y="${y(0) - 5}" fill="var(--muted)" font-size="9" font-family="var(--f-mono)" text-anchor="end">drained</text>`;
+  $('#pour-chart').innerHTML = s;
+  $('#pours').innerHTML = r.pours.map(p => `<li><span class="tm">${fmtT(p.t)}</span><span class="g">→ ${p.to}g</span><span class="d">${p.name}: ${p.how}<small>${p.why}</small></span></li>`).join('')
+    + `<li><span class="tm">~${fmtT(r.drain)}</span><span class="g">done</span><span class="d">Let gravity pull the water through.<small>The fast paper drains in about 12 s.</small></span></li>`;
+}
+renderRecipe(SAMPLE_RECIPE);
+
+/* =====================================================================
+   UI: EXPLANATION CARD
+   ===================================================================== */
+function renderExplain(){
+  const L = LAYERS[state.layer];
+  const sel = state.selected && CALLOUTS[state.layer].find(c => c.id === state.selected);
+  $('#ex-back').hidden = !sel;
+  if (sel){
+    $('#ex-eyebrow').textContent = L.eyebrow.split(' · ')[0] + ' · ' + sel.label;
+    $('#ex-title').textContent = sel.title;
+    $('#ex-body').innerHTML = `<div class="explain-text"><p>${sel.text}</p></div><div class="side-box"><div class="v60-box"><span class="label">In your V60</span>${L.v60}</div></div>`;
+    return;
+  }
+  $('#ex-eyebrow').textContent = L.eyebrow;
+  $('#ex-title').textContent = L.title;
+  let side = '';
+  if (L.meters) side += `<div class="meters">${L.meters.map(([k,v]) => `<div class="meter"><span>${k}</span><span class="track"><span class="fill" style="width:${v}%;display:block"></span></span><span class="v">${v}</span></div>`).join('')}</div>`;
+  if (L.legend) side += `<div class="legend">${CALLOUTS[2].map(c => `<button type="button" data-c="${c.id}" style="--sw:${c.sw}"><i></i>${c.label}</button>`).join('')}</div>`;
+  side += `<div class="v60-box"><span class="label">In your V60</span>${L.v60}</div>`;
+  $('#ex-body').innerHTML = `<div class="explain-text">${L.body.map(p => `<p>${p}</p>`).join('')}</div><div class="side-box">${side}</div>`;
+  $('#ex-body').querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', () => selectCallout(b.dataset.c)));
+}
+function selectCallout(id){
+  state.selected = state.selected === id ? null : id;
+  renderExplain(); refreshCalloutActive();
+}
+$('#ex-back').addEventListener('click', () => selectCallout(null));
+
+/* =====================================================================
+   3D
+   ===================================================================== */
+const T3 = THREE;
+const V3 = (x=0,y=0,z=0) => new T3.Vector3(x,y,z);
+const stage = $('#stage'), canvas = $('#scene');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const renderer = new T3.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputEncoding = T3.sRGBEncoding;
+renderer.toneMapping = T3.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.9;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = T3.PCFSoftShadowMap;
+
+const scene = new T3.Scene();
+scene.background = new T3.Color(0x0c0908);
+scene.fog = new T3.Fog(0x0c0908, 9, 26);
+const pmrem = new T3.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new T3.RoomEnvironment(), 0.04).texture;
+
+const camera = new T3.PerspectiveCamera(34, 1, 0.01, 100);
+const controls = new T3.OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.enablePan = false; controls.rotateSpeed = 0.7; controls.zoomSpeed = 0.8;
+
+// lights
+scene.add(new T3.HemisphereLight(0x5a4436, 0x0a0706, 0.55));
+const key = new T3.DirectionalLight(0xffe0bf, 2.1);
+key.position.set(3.5, 6, 4.5); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02;
+Object.assign(key.shadow.camera, {left:-4.5, right:4.5, top:4.5, bottom:-4.5, near:0.5, far:20});
+scene.add(key);
+const rim = new T3.DirectionalLight(0x9cc0ff, 1.25); rim.position.set(-5, 2.5, -4); scene.add(rim);
+const fill = new T3.PointLight(0xff9a5a, 0.6, 12); fill.position.set(-3, -1, 3); scene.add(fill);
+
+// helpers
+function mulberry32(a){ return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const clamp = (v,a=0,b=1) => Math.min(b, Math.max(a, v));
+const ease = t => t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+const easeIn = t => t*t*t;
+function canvasTex(size, draw, repeat){
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const g = c.getContext('2d'); draw(g, size);
+  const t = new T3.CanvasTexture(c); t.encoding = T3.sRGBEncoding; t.anisotropy = 4;
+  if (repeat){ t.repeat.set(repeat.r, repeat.r); t.offset.set(repeat.o, repeat.o); }
+  return t;
+}
+function spriteTex(){
+  return canvasTex(64, (g, s) => {
+    const gr = g.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.35, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, s, s);
+  });
+}
+const SPRITE = spriteTex();
+function agtronColor(a){
+  const stops = [[25,[0x2a,0x18,0x10]],[45,[0x48,0x2a,0x19]],[55,[0x5c,0x36,0x1f]],[65,[0x7a,0x4a,0x2a]],[75,[0x96,0x62,0x3a]],[95,[0xc4,0x96,0x64]]];
+  for (let i = 1; i < stops.length; i++) if (a <= stops[i][0]){
+    const [a0,c0] = stops[i-1], [a1,c1] = stops[i], t = (a - a0) / (a1 - a0);
+    return new T3.Color(...c0.map((v,k) => (v + (c1[k] - v) * t) / 255)).convertSRGBToLinear();
+  }
+  return new T3.Color(0xc49664).convertSRGBToLinear();
+}
+
+// ambient dust
+{
+  const N = 700, pos = new Float32Array(N*3), rnd = mulberry32(7);
+  for (let i = 0; i < N; i++){ const r = 4 + rnd()*12, th = rnd()*Math.PI*2, ph = Math.acos(2*rnd()-1);
+    pos.set([r*Math.sin(ph)*Math.cos(th), r*Math.cos(ph)*0.6, r*Math.sin(ph)*Math.sin(th)], i*3); }
+  const g = new T3.BufferGeometry(); g.setAttribute('position', new T3.BufferAttribute(pos, 3));
+  var dust = new T3.Points(g, new T3.PointsMaterial({size:0.05, map:SPRITE, color:0xffd9b0, transparent:true, opacity:0.35, depthWrite:false, blending:T3.AdditiveBlending}));
+  scene.add(dust);
+}
+
+// floor: shadow catcher + warm glow
+const floorY = -1.3;
+const shadowFloor = new T3.Mesh(new T3.PlaneGeometry(30, 30), new T3.ShadowMaterial({opacity:0.45}));
+shadowFloor.rotation.x = -Math.PI/2; shadowFloor.position.y = floorY; shadowFloor.receiveShadow = true; scene.add(shadowFloor);
+const glowFloor = new T3.Mesh(new T3.PlaneGeometry(9, 9), new T3.MeshBasicMaterial({map:canvasTex(256, (g,s) => {
+  const gr = g.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2); gr.addColorStop(0,'rgba(234,169,94,.22)'); gr.addColorStop(.5,'rgba(234,169,94,.06)'); gr.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0,0,s,s);
+  g.strokeStyle = 'rgba(255,220,176,.10)'; g.lineWidth = 1;
+  [0.28,0.36,0.44].forEach(r => { g.beginPath(); g.arc(s/2,s/2,r*s,0,Math.PI*2); g.stroke(); });
+  for (let i = 0; i < 72; i++){ const a = i/72*Math.PI*2, r0 = .44*s, r1 = r0 + (i % 6 ? 4 : 9);
+    g.beginPath(); g.moveTo(s/2+Math.cos(a)*r0, s/2+Math.sin(a)*r0); g.lineTo(s/2+Math.cos(a)*r1, s/2+Math.sin(a)*r1); g.stroke(); }
+}), transparent:true, depthWrite:false, blending:T3.AdditiveBlending}));
+glowFloor.rotation.x = -Math.PI/2; glowFloor.position.y = floorY + 0.002; scene.add(glowFloor);
+
+/* ---------- LAYER 1: CHERRY ---------- */
+const cherry = new T3.Group(); scene.add(cherry);
+const CH = {gap:0.045, w:0.40, h:0.56, pw:0.035};
+function dPoints(sign, w, h, gx, n=40){
+  const pts = [];
+  for (let i = 0; i <= n; i++){ const t = -Math.PI/2 + Math.PI * i / n; pts.push(new T3.Vector2(sign*(gx + w*Math.cos(t)), h*Math.sin(t))); }
+  return pts;
+}
+function dShape(sign, w, h, gx){ return new T3.Shape(dPoints(sign, w, h, gx)); }
+function cherryCapTexture(){
+  // spans [-0.965, 0.965]
+  return canvasTex(1024, (g, s) => {
+    const c = s/2, R = s/2;
+    const gr = g.createRadialGradient(c,c,0,c,c,R);
+    gr.addColorStop(0,'#f6e7c4'); gr.addColorStop(.78,'#f1d4a2'); gr.addColorStop(.9,'#efb08c'); gr.addColorStop(.97,'#d8606a'); gr.addColorStop(1,'#a8202f');
+    g.fillStyle = gr; g.fillRect(0,0,s,s);
+    const rnd = mulberry32(3);
+    g.lineCap = 'round';
+    for (let i = 0; i < 1400; i++){ // radial pulp fibres
+      const a = rnd()*Math.PI*2, r0 = R*(0.80 + rnd()*0.12), r1 = r0 + R*(0.02 + rnd()*0.06);
+      g.strokeStyle = `rgba(${200+rnd()*40|0},${120+rnd()*60|0},${90+rnd()*40|0},${0.08+rnd()*0.12})`;
+      g.lineWidth = 0.6 + rnd()*1.2;
+      g.beginPath(); g.moveTo(c+Math.cos(a)*r0, c+Math.sin(a)*r0); g.lineTo(c+Math.cos(a+0.01)*r1, c+Math.sin(a+0.01)*r1); g.stroke();
+    }
+    for (let i = 0; i < 260; i++){ // juice cells
+      const a = rnd()*Math.PI*2, r = R*(0.82 + rnd()*0.13);
+      g.fillStyle = `rgba(255,240,220,${0.10+rnd()*0.15})`;
+      g.beginPath(); g.arc(c+Math.cos(a)*r, c+Math.sin(a)*r, 1.5+rnd()*3, 0, Math.PI*2); g.fill();
+    }
+  });
+}
+function beanSectionTexture(){
+  // covers [-0.6,0.6]^2 in cherry cap coords
+  const span = 1.2;
+  return canvasTex(1024, (g, s) => {
+    const P = (x,y) => [(x/span + .5)*s, (1 - (y/span + .5))*s];
+    g.fillStyle = '#b5c196'; g.fillRect(0,0,s,s);
+    [1,-1].forEach(sign => {
+      const pts = dPoints(sign, CH.w, CH.h, CH.gap, 60);
+      g.save(); g.beginPath(); pts.forEach((p,i) => { const [x,y] = P(p.x,p.y); i ? g.lineTo(x,y) : g.moveTo(x,y); }); g.closePath(); g.clip();
+      const [cx, cy] = P(sign*(CH.gap + CH.w*0.42), 0);
+      const gr = g.createRadialGradient(cx, cy, 0, cx, cy, s*0.32);
+      gr.addColorStop(0,'#d6dcb6'); gr.addColorStop(.7,'#b6c394'); gr.addColorStop(1,'#93a477');
+      g.fillStyle = gr; g.fillRect(0,0,s,s);
+      const rnd = mulberry32(sign > 0 ? 11 : 12);
+      for (let i = 0; i < 900; i++){ const [x,y] = P(sign*(CH.gap + rnd()*CH.w), (rnd()*2-1)*CH.h);
+        g.fillStyle = `rgba(90,110,70,${rnd()*0.10})`; g.fillRect(x, y, 2, 2); }
+      // silverskin rim
+      g.lineWidth = 7; g.strokeStyle = 'rgba(232,234,222,.85)';
+      g.beginPath(); pts.forEach((p,i) => { const [x,y] = P(p.x,p.y); i ? g.lineTo(x,y) : g.moveTo(x,y); }); g.closePath(); g.stroke();
+      // centre-cut fold: curls in from the middle of the flat face
+      const f = [[CH.gap, 0.02],[CH.gap+0.16, 0.13],[CH.gap+0.26, -0.06],[CH.gap+0.12, -0.08]].map(([x,y]) => P(sign*x, y));
+      g.lineCap = 'round';
+      g.strokeStyle = '#59633f'; g.lineWidth = 11;
+      g.beginPath(); g.moveTo(...f[0]); g.bezierCurveTo(...f[1], ...f[2], ...f[3]); g.stroke();
+      g.strokeStyle = 'rgba(236,236,224,.9)'; g.lineWidth = 3.5;
+      g.beginPath(); g.moveTo(...f[0]); g.bezierCurveTo(...f[1], ...f[2], ...f[3]); g.stroke();
+      g.restore();
+    });
+  }, {r:1/span, o:0.5});
+}
+function makeCherryHalf(seed){
+  const half = new T3.Group();
+  const rnd = mulberry32(seed);
+  // skin hemisphere (z <= 0)
+  const sg = new T3.SphereGeometry(1, 128, 96, Math.PI, Math.PI);
+  const col = [], base = new T3.Color(0x8e0c22), dark = new T3.Color(0x4a0612), light = new T3.Color(0xc0242f), p = sg.attributes.position;
+  for (let i = 0; i < p.count; i++){
+    const y = p.getY(i), x = p.getX(i), z = p.getZ(i);
+    const n = Math.sin(x*7.1 + y*3.3) * Math.sin(z*6.3 - y*5.1) * 0.5 + 0.5;
+    const c = base.clone().lerp(dark, clamp((y - 0.35) * 1.1) * 0.8).lerp(light, n * 0.22 * clamp(1 - y));
+    col.push(c.r, c.g, c.b);
+  }
+  sg.setAttribute('color', new T3.Float32BufferAttribute(col, 3));
+  const skinMat = new T3.MeshPhysicalMaterial({color:0xffffff, vertexColors:true, roughness:0.38, clearcoat:1, clearcoatRoughness:0.12, envMapIntensity:0.35});
+  const skin = new T3.Mesh(sg, skinMat); skin.castShadow = true; half.add(skin);
+  // cut face
+  const cap = new T3.Mesh(new T3.CircleGeometry(0.965, 128), new T3.MeshStandardMaterial({map:cherryCapTexture(), roughness:0.8, envMapIntensity:0.15}));
+  cap.position.z = 0.001; half.add(cap);
+  const rimRing = new T3.Mesh(new T3.RingGeometry(0.955, 1.0, 128), new T3.MeshStandardMaterial({color:0x7d0d1d, roughness:0.4}));
+  rimRing.position.z = 0.002; half.add(rimRing);
+  // mucilage
+  const mucShape = new T3.Shape(); mucShape.absellipse(0, 0, 0.66, 0.74, 0, Math.PI*2);
+  const muc = new T3.Mesh(new T3.ExtrudeGeometry(mucShape, {depth:0.018, bevelEnabled:true, bevelThickness:0.008, bevelSize:0.02, bevelSegments:3, curveSegments:64}),
+    new T3.MeshPhysicalMaterial({color:0xd99a30, roughness:0.1, clearcoat:1, transparent:true, opacity:0.55, envMapIntensity:0.6}));
+  half.add(muc);
+  // parchment + beans
+  const beanTex = beanSectionTexture();
+  [1,-1].forEach(sign => {
+    const outer = dShape(sign, CH.w + CH.pw, CH.h + CH.pw, CH.gap - 0.03);
+    outer.holes.push(new T3.Path(dPoints(sign, CH.w, CH.h, CH.gap).reverse()));
+    const parch = new T3.Mesh(new T3.ExtrudeGeometry(outer, {depth:0.035, bevelEnabled:false, curveSegments:48}),
+      new T3.MeshStandardMaterial({color:0xd9c9a4, roughness:0.9, envMapIntensity:0.2}));
+    half.add(parch);
+    const bean = new T3.Mesh(new T3.ExtrudeGeometry(dShape(sign, CH.w, CH.h, CH.gap), {depth:0.045, bevelEnabled:true, bevelThickness:0.006, bevelSize:0.006, bevelSegments:2, curveSegments:48}),
+      new T3.MeshStandardMaterial({map:beanTex, roughness:0.75, envMapIntensity:0.2}));
+    bean.castShadow = true;
+    half.add(bean);
+  });
+  return half;
+}
+const cherryBack = makeCherryHalf(1); cherry.add(cherryBack);
+// stem on the back half
+{
+  const stem = new T3.Mesh(new T3.CylinderGeometry(0.035, 0.05, 0.42, 16), new T3.MeshStandardMaterial({color:0x4d3f22, roughness:0.8}));
+  stem.position.set(0, 1.12, -0.06); stem.rotation.z = 0.18; stem.castShadow = true; cherryBack.add(stem);
+  const nub = new T3.Mesh(new T3.TorusGeometry(0.07, 0.025, 10, 24), new T3.MeshStandardMaterial({color:0x3a2a14, roughness:0.9}));
+  nub.position.set(0, -0.99, -0.05); nub.rotation.x = Math.PI/2; cherryBack.add(nub);
+}
+const cherryFront = makeCherryHalf(2); cherryFront.rotation.y = Math.PI; cherry.add(cherryFront);
+cherry.scale.set(1, 1.08, 1);
+cherryBack.rotation.set(0, 0, 0);
+function cherryExplode(e){
+  cherryFront.position.set(1.75*e, 0.15*e, -0.9*e);
+  cherryFront.rotation.set(0.25*e, Math.PI - 0.95*e, -0.12*e);
+  cherryBack.rotation.y = -0.18*e;
+}
+const cherryAnchor = {
+  skin:      V3(Math.cos(2.4)*0.985, Math.sin(2.4)*0.985, 0.01),
+  pulp:      V3(Math.cos(3.55)*0.89, Math.sin(3.55)*0.89, 0.01),
+  mucilage:  V3(Math.cos(4.3)*0.70, Math.sin(4.3)*0.77, 0.03),
+  parchment: V3(-(CH.gap - 0.03 + (CH.w + CH.pw)*Math.cos(0.95)), (CH.h + CH.pw)*Math.sin(0.95)*0.98, 0.036),
+  bean:      V3(0.32, 0.28, 0.05),
+  centercut: V3(CH.gap + 0.20, 0.02, 0.05),
+  silverskin:V3(CH.gap + CH.w*Math.cos(-0.5)*0.99, CH.h*Math.sin(-0.5)*0.99, 0.05),
+};
+
+/* ---------- LAYER 2: BEAN ---------- */
+const bean = new T3.Group(); scene.add(bean);
+const BW = 0.72, BT = 0.5, FLAT = 0.36;
+function beanDeform(x, y, z){
+  // x,y,z on the unit sphere -> bean surface. Long axis is y, flat face is -z.
+  let X = x * BW, Z = z * BT;
+  if (Z < 0) Z *= FLAT;
+  const w = clamp((-z + 0.15) / 0.35);
+  const x0 = 0.05 * Math.sin(y * 2.6);
+  const g = Math.exp(-Math.pow((X - x0) / 0.075, 2));
+  const taper = clamp(1 - Math.pow(Math.abs(y), 3));
+  Z += 0.115 * g * taper * w;
+  Z -= 0.07 * y * y;            // slight banana curve
+  X *= 1 - 0.12 * y * y;        // narrower ends
+  return [X, y, Z, g * taper * w];
+}
+function beanSectionShapePts(sign){
+  // ring at y = 0, returned in shape coords (u = x, v = sign * -z)
+  const pts = [], n = 240;
+  for (let i = 0; i < n; i++){ const t = i / n * Math.PI * 2; const [X,,Z] = beanDeform(Math.cos(t), 0, Math.sin(t)); pts.push(new T3.Vector2(X, -sign*Z)); }
+  return pts;
+}
+function beanCapTexture(sign, agtron){
+  const span = 1.6, outline = beanSectionShapePts(sign);
+  return canvasTex(1024, (g, s) => {
+    const P = (u,v) => [(u/span + .5)*s, (1 - (v/span + .5))*s];
+    const path = () => { g.beginPath(); outline.forEach((p,i) => { const [x,y] = P(p.x,p.y); i ? g.lineTo(x,y) : g.moveTo(x,y); }); g.closePath(); };
+    const inner = agtronColor(Math.min(95, agtron + 12)).convertLinearToSRGB().getStyle();
+    const outer = agtronColor(agtron - 6).convertLinearToSRGB().getStyle();
+    g.fillStyle = outer; g.fillRect(0,0,s,s);
+    g.save(); path(); g.clip();
+    const [cx, cy] = P(0, sign*-0.16);
+    const gr = g.createRadialGradient(cx, cy, 0, cx, cy, s*0.45);
+    gr.addColorStop(0, inner); gr.addColorStop(.75, inner); gr.addColorStop(1, outer);
+    g.fillStyle = gr; g.fillRect(0,0,s,s);
+    // cells: jittered hex lattice
+    const rnd = mulberry32(sign > 0 ? 21 : 22), cell = 22, jit = (k) => (Math.sin(k*12.9898)*43758.5453 % 1) * 5;
+    g.strokeStyle = 'rgba(55,28,12,.42)'; g.lineWidth = 1.6;
+    for (let r = -2; r < s/(cell*1.5)+2; r++) for (let q = -2; q < s/(cell*1.732)+2; q++){
+      const x = q*cell*1.732 + (r & 1)*cell*0.866, y = r*cell*1.5;
+      g.beginPath();
+      for (let k = 0; k < 6; k++){ const a = Math.PI/6 + k*Math.PI/3; const px = x + cell*Math.cos(a), py = y + cell*Math.sin(a);
+        const kx = px + jit(px*0.37 + py*1.31), ky = py + jit(py*0.91 - px*0.53); k ? g.lineTo(kx,ky) : g.moveTo(kx,ky); }
+      g.closePath(); g.stroke();
+      if (rnd() < 0.32){ g.fillStyle = `rgba(30,14,6,${0.25 + rnd()*0.35})`; g.beginPath(); g.ellipse(x + (rnd()-.5)*8, y + (rnd()-.5)*8, 2 + rnd()*5, 1.5 + rnd()*3.5, rnd()*3, 0, Math.PI*2); g.fill(); }
+    }
+    // centre-cut fold with chaff
+    // the flat face sits at +v for sign=1 and -v for sign=-1; the fold curls inward from its notch
+    const ff = [[0, 0.06],[0.13, -0.04],[-0.01, -0.22],[-0.12, -0.13]].map(([u,v]) => P(u, sign*v));
+    g.lineCap = 'round';
+    g.strokeStyle = 'rgba(40,20,10,.95)'; g.lineWidth = 13; g.beginPath(); g.moveTo(...ff[0]); g.bezierCurveTo(...ff[1], ...ff[2], ...ff[3]); g.stroke();
+    g.strokeStyle = 'rgba(232,210,170,.95)'; g.lineWidth = 4; g.setLineDash([10,6]); g.beginPath(); g.moveTo(...ff[0]); g.bezierCurveTo(...ff[1], ...ff[2], ...ff[3]); g.stroke(); g.setLineDash([]);
+    g.restore();
+    // crust
+    path(); g.strokeStyle = agtronColor(agtron - 18).convertLinearToSRGB().getStyle(); g.lineWidth = 10; g.stroke();
+  }, {r:1/span, o:0.5});
+}
+const beanA = new T3.Group(), beanB = new T3.Group(); // hinges
+const beanHalfA = makeBeanHalf(false, 65), beanHalfB = makeBeanHalf(true, 65);
+function makeBeanHalf(top, agtron){
+  // top half: rotateX(+90) gives v = z, so build its shape with v = z (sign = -1).
+  // bottom half: rotateX(-90) gives v = -z, so shape with v = -z (sign = 1).
+  const grp = new T3.Group();
+  const sg = new T3.SphereGeometry(1, 180, 70, 0, Math.PI*2, top ? 0 : Math.PI/2, Math.PI/2);
+  const p = sg.attributes.position, col = [], base = agtronColor(agtron), chaff = new T3.Color(0xd8c39a).convertSRGBToLinear();
+  for (let i = 0; i < p.count; i++){
+    const [X,Y,Z,crease] = beanDeform(p.getX(i), p.getY(i), p.getZ(i));
+    p.setXYZ(i, X, Y, Z);
+    const n = 0.88 + 0.16 * (Math.sin(X*31 + Y*17) * Math.sin(Y*23 - Z*29) * 0.5 + 0.5);
+    const c = base.clone().multiplyScalar(n).lerp(chaff, clamp((crease - 0.55) * 2.2) * 0.85);
+    col.push(c.r, c.g, c.b);
+  }
+  sg.setAttribute('color', new T3.Float32BufferAttribute(col, 3));
+  sg.computeVertexNormals();
+  const mesh = new T3.Mesh(sg, new T3.MeshPhysicalMaterial({vertexColors:true, roughness:0.58, clearcoat:0.25, clearcoatRoughness:0.5, envMapIntensity:0.7}));
+  mesh.castShadow = true; grp.add(mesh);
+  const sign = top ? -1 : 1;
+  const shapeGeo = new T3.ShapeGeometry(new T3.Shape(beanSectionShapePts(sign)));
+  shapeGeo.rotateX(top ? Math.PI/2 : -Math.PI/2);
+  const cap = new T3.Mesh(shapeGeo, new T3.MeshStandardMaterial({map:beanCapTexture(sign, agtron), roughness:0.85, envMapIntensity:0.4}));
+  cap.position.y = top ? -0.001 : 0.001;
+  cap.receiveShadow = true;
+  grp.add(cap);
+  return grp;
+}
+// orient: long axis (local y) -> world x
+[[beanA, beanHalfA],[beanB, beanHalfB]].forEach(([hinge, half]) => { const inner = new T3.Group(); inner.rotation.z = -Math.PI/2; inner.add(half); hinge.add(inner); bean.add(hinge); });
+bean.rotation.x = 0.12;
+function beanExplode(e){
+  // A = bottom half (local y<0) -> world -x, cut face toward +x. B = top half -> world +x.
+  beanA.position.x = -0.32*e; beanB.position.x = 0.32*e;
+  beanA.rotation.y = -1.02*e; beanB.rotation.y = 1.02*e;
+  beanA.position.z = beanB.position.z = -0.25*e;
+}
+// anchors in half-local coords (x, y, z) before inner rotation
+const beanAnchor = {
+  matrix:   [beanHalfA, V3(-0.38, 0.002, 0.12)],
+  crust:    [beanHalfA, V3(0, -0.62, 0.40)],
+  centercut:[beanHalfA, V3(-0.04, 0.002, -0.2)],
+  pores:    [beanHalfB, V3(0.32, -0.002, 0.18)],
+  brittle:  [beanHalfB, V3(-0.30, -0.002, -0.02)],
+};
+{ // place the crust anchor on the real surface
+  const [X,Y,Z] = beanDeform(0, -Math.cos(0.9), Math.sin(0.9)); beanAnchor.crust[1].set(X, Y, Z);
+}
+
+/* ---------- LAYER 3: CELLS ---------- */
+const cells = new T3.Group(); scene.add(cells);
+const CELL = {s:0.36, R:2.5, H:0.5, wall:0.04, rupture:0.07};
+const cellData = {centers:[], content:{}};
+{
+  const rnd = mulberry32(42), s = CELL.s, sq3 = Math.sqrt(3);
+  const hash = (x,z) => { const h = Math.sin(x*127.1 + z*311.7) * 43758.5453; return h - Math.floor(h); };
+  const key = (x,z) => Math.round(x*1000) + ',' + Math.round(z*1000);
+  const jitter = new Map();
+  const J = (x,z) => { const k = key(x,z); if (!jitter.has(k)){ jitter.set(k, [x + (hash(x,z)-.5)*0.24*s, z + (hash(z,x)-.5)*0.24*s]); } return jitter.get(k); };
+  const edges = new Map();
+  for (let r = -10; r <= 10; r++) for (let q = -10; q <= 10; q++){
+    const cx = s*sq3*(q + r/2), cz = s*1.5*r;
+    const d = Math.hypot(cx, cz);
+    if (d > CELL.R + Math.sin(Math.atan2(cz,cx)*5)*0.25) continue;
+    const corners = [];
+    for (let k = 0; k < 6; k++){ const a = Math.PI/6 + k*Math.PI/3; corners.push(J(cx + s*Math.cos(a), cz + s*Math.sin(a))); }
+    const ccx = corners.reduce((a,c) => a + c[0], 0)/6, ccz = corners.reduce((a,c) => a + c[1], 0)/6;
+    cellData.centers.push([ccx, ccz]);
+    for (let k = 0; k < 6; k++){ const a = corners[k], b = corners[(k+1)%6]; const ek = [key(...a), key(...b)].sort().join('|'); if (!edges.has(ek)) edges.set(ek, [a,b]); }
+  }
+  // walls
+  const list = [...edges.values()].filter(() => rnd() > CELL.rupture);
+  const wallMat = new T3.MeshStandardMaterial({color:0xffffff, roughness:0.8, envMapIntensity:0.25});
+  const walls = new T3.InstancedMesh(new T3.BoxGeometry(1,1,1), wallMat, list.length);
+  walls.castShadow = true; walls.receiveShadow = true;
+  const m = new T3.Matrix4(), qn = new T3.Quaternion(), sc = new T3.Vector3(), ps = new T3.Vector3(), up = new T3.Vector3(0,1,0), col = new T3.Color();
+  cellData.walls = [];
+  list.forEach(([a,b], i) => {
+    const dx = b[0]-a[0], dz = b[1]-a[1], len = Math.hypot(dx,dz);
+    const h = CELL.H * (rnd() < 0.06 ? 0.25 + rnd()*0.3 : 0.88 + rnd()*0.22);
+    ps.set((a[0]+b[0])/2, h/2, (a[1]+b[1])/2); qn.setFromAxisAngle(up, -Math.atan2(dz,dx)); sc.set(len + CELL.wall*0.9, h, CELL.wall*(0.8 + rnd()*0.5));
+    m.compose(ps, qn, sc); walls.setMatrixAt(i, m);
+    col.set(0xa9784c).convertSRGBToLinear().multiplyScalar(0.75 + rnd()*0.4); walls.setColorAt(i, col);
+    cellData.walls.push([ps.x, h, ps.z]);
+  });
+  cells.add(walls);
+  // base slab
+  const base = new T3.Mesh(new T3.CylinderGeometry(CELL.R + 0.45, CELL.R + 0.55, 0.12, 96), new T3.MeshStandardMaterial({color:0x3a2416, roughness:0.85}));
+  base.position.y = -0.06; base.receiveShadow = true; cells.add(base);
+  const floorCells = new T3.Mesh(new T3.CircleGeometry(CELL.R + 0.45, 96), new T3.MeshStandardMaterial({color:0x3e2618, roughness:0.95, envMapIntensity:0.2}));
+  floorCells.rotation.x = -Math.PI/2; floorCells.position.y = 0.001; floorCells.receiveShadow = true; cells.add(floorCells);
+
+  // contents
+  const C = cellData.centers;
+  const inst = (geo, mat, n) => { const im = new T3.InstancedMesh(geo, mat, n); im.castShadow = true; cells.add(im); return im; };
+  const place = (n, f) => { const out = []; C.forEach(([cx,cz]) => { const k = f(); for (let i = 0; i < k; i++){ const a = rnd()*Math.PI*2, r = rnd()*0.19; out.push([cx + Math.cos(a)*r, cz + Math.sin(a)*r]); } }); return out; };
+  const obj = new T3.Object3D();
+  function fill(name, im, pts, yFn, sFn, colorFn){
+    pts.forEach(([x,z], i) => {
+      const y = yFn(), sz = sFn();
+      obj.position.set(x, y, z); obj.rotation.set(rnd()*6, rnd()*6, rnd()*6); obj.scale.setScalar(sz); obj.updateMatrix();
+      im.setMatrixAt(i, obj.matrix); if (colorFn) im.setColorAt(i, colorFn(i));
+    });
+    im.count = pts.length;
+    cellData.content[name] = {im, pts:pts.map(([x,z], i) => { im.getMatrixAt(i, m); const v = V3().setFromMatrixPosition(m); return v; })};
+  }
+  const lipidPts = place(0, () => 1 + (rnd() < .5)), sugarPts = place(0, () => 2 + (rnd()*3|0)), acidPts = place(0, () => 3 + (rnd()*3|0)),
+        co2Pts = place(0, () => rnd() < .7 ? 1 : 0), melPts = place(0, () => rnd() < .6 ? 1 : 0);
+  fill('lipid', inst(new T3.SphereGeometry(1, 20, 14), new T3.MeshPhysicalMaterial({color:0xf0a62a, roughness:0.05, clearcoat:1, transmission:0, transparent:true, opacity:0.92, emissive:0x5a2c00, emissiveIntensity:0.4}), lipidPts.length),
+       lipidPts, () => 0.06 + rnd()*0.32, () => 0.035 + rnd()*0.03);
+  fill('sugar', inst(new T3.OctahedronGeometry(1), new T3.MeshStandardMaterial({color:0xf2dcb0, roughness:0.25, metalness:0, emissive:0x3a2a10, emissiveIntensity:0.3}), sugarPts.length),
+       sugarPts, () => 0.04 + rnd()*0.38, () => 0.024 + rnd()*0.016);
+  const acidMat = new T3.MeshBasicMaterial({color:0xffffff, toneMapped:false});
+  const acidW = [0.3, 0.28, 0.12, 0.18, 0.12];
+  fill('acid', inst(new T3.SphereGeometry(1, 12, 8), acidMat, acidPts.length),
+       acidPts, () => 0.04 + rnd()*0.42, () => 0.015 + rnd()*0.008,
+       () => { let r = rnd(), k = 0; while (r > acidW[k]) { r -= acidW[k]; k++; } return new T3.Color(ACIDS[k].color); });
+  fill('co2', inst(new T3.SphereGeometry(1, 24, 16), new T3.MeshPhysicalMaterial({color:0xbfe0ff, roughness:0.05, transparent:true, opacity:0.28, depthWrite:false, clearcoat:1, envMapIntensity:0.8}), co2Pts.length),
+       co2Pts, () => 0.18 + rnd()*0.25, () => 0.05 + rnd()*0.04);
+  cellData.content.co2.im.castShadow = false;
+  fill('melanoidin', inst(new T3.IcosahedronGeometry(1, 0), new T3.MeshStandardMaterial({color:0x4a2513, roughness:0.9, flatShading:true}), melPts.length),
+       melPts, () => 0.04 + rnd()*0.25, () => 0.03 + rnd()*0.02);
+  cellData.co2Base = cellData.content.co2.pts.map(v => v.clone());
+
+  // aroma rising above
+  const N = 320, pos = new Float32Array(N*3), cols = new Float32Array(N*3), seed = [];
+  for (let i = 0; i < N; i++){ const c = C[rnd()*C.length|0]; seed.push({x:c[0] + (rnd()-.5)*0.3, z:c[1] + (rnd()-.5)*0.3, ph:rnd(), sp:0.06 + rnd()*0.08, sw:rnd()*6}); }
+  const ag = new T3.BufferGeometry(); ag.setAttribute('position', new T3.BufferAttribute(pos, 3)); ag.setAttribute('color', new T3.BufferAttribute(cols, 3));
+  const aroma = new T3.Points(ag, new T3.PointsMaterial({size:0.07, map:SPRITE, vertexColors:true, transparent:true, depthWrite:false, blending:T3.AdditiveBlending}));
+  cells.add(aroma);
+  cellData.aroma = {aroma, seed, pos, cols};
+  cellData.wallsMesh = walls;
+}
+cells.position.y = floorY + 0.12;
+function nearest(list, x, z){ let best = null, bd = 1e9; list.forEach(v => { const d = (v.x - x)**2 + (v.z - z)**2; if (d < bd){ bd = d; best = v; } }); return best; }
+const cellAnchor = {
+  wall:      (() => { const w = cellData.walls.reduce((b, w) => ((w[0]+1.6)**2 + (w[2]+0.2)**2 < (b[0]+1.6)**2 + (b[2]+0.2)**2 ? w : b)); return V3(w[0], w[1], w[2]); })(),
+  cavity:    (() => { const c = cellData.centers.reduce((b, c) => ((c[0]+1.5)**2 + (c[1]-0.2)**2 < (b[0]+1.5)**2 + (b[1]-0.2)**2 ? c : b)); return V3(c[0], 0.02, c[1]); })(),
+  lipid:     nearest(cellData.content.lipid.pts, -0.3, 1.6),
+  sugar:     nearest(cellData.content.sugar.pts, 1.3, 1.1),
+  acid:      nearest(cellData.content.acid.pts, 1.4, -0.2),
+  co2:       nearest(cellData.content.co2.pts, 0.2, -0.6),
+  melanoidin:nearest(cellData.content.melanoidin.pts, 1.2, -1.5),
+  aroma:     V3(-0.8, CELL.H + 0.9, -1.0),
+};
+
+/* =====================================================================
+   LAYER SWITCHING, CAMERA DIVE
+   ===================================================================== */
+const groups = [cherry, bean, cells];
+const REST = [
+  {pos:V3(0.75, 0.85, 7.6), target:V3(0.6, 0.2, -0.3), min:2.2, max:11},
+  {pos:V3(0, 0.55, 4.6),    target:V3(0, 0.0, -0.15),    min:1.6, max:8},
+  {pos:V3(0, 6.6, 7.6),     target:V3(0, -1.0, 0.35),    min:2.0, max:15},
+];
+const tmpV = V3();
+function divePoint(layer){
+  if (layer === 0) return cherry.localToWorld(V3(0.28, 0.0, 0.05));
+  if (layer === 1) return beanHalfA.localToWorld(V3(-0.1, 0, 0.1));
+  return V3(0, floorY + 0.6, 0);
+}
+let arrivalT = 0;
+function showLayer(n){
+  groups.forEach((g, i) => g.visible = i === n);
+  shadowFloor.visible = glowFloor.visible = n !== 2;
+  state.layer = n; state.selected = null;
+  document.querySelectorAll('.layer-btn').forEach(b => b.setAttribute('aria-selected', +b.dataset.layer === n));
+  const R = REST[n]; controls.minDistance = R.min; controls.maxDistance = R.max;
+  buildCallouts(); renderExplain();
+  arrivalT = performance.now();
+}
+let trans = null, pending = null;
+function goTo(n){
+  if (trans){ pending = n; return; }
+  if (n === state.layer) { resetView(); return; }
+  if (reduceMotion){ showLayer(n); resetView(true); return; }
+  trans = {t0:performance.now(), phase:0, from:state.layer, to:n, dir:Math.sign(n - state.layer), p0:camera.position.clone(), q0:controls.target.clone()};
+  controls.enabled = false;
+  hideCallouts();
+}
+function resetView(instant){
+  const R = REST[state.layer];
+  if (instant || reduceMotion){ camera.position.copy(R.pos); controls.target.copy(R.target); controls.update(); return; }
+  trans = {t0:performance.now(), phase:2, p0:camera.position.clone(), q0:controls.target.clone()};
+}
+function stepTransition(now){
+  if (!trans) return;
+  const veil = $('#veil');
+  if (trans.phase === 0){
+    const t = clamp((now - trans.t0) / 700), k = easeIn(t);
+    const dp = divePoint(trans.from);
+    if (trans.dir > 0){
+      const end = dp.clone().add(trans.p0.clone().sub(dp).setLength(0.12));
+      camera.position.lerpVectors(trans.p0, end, ease(t));
+      controls.target.lerpVectors(trans.q0, dp, ease(t));
+    } else {
+      camera.position.copy(trans.q0).add(trans.p0.clone().sub(trans.q0).multiplyScalar(1 + 2.4*k));
+    }
+    veil.style.opacity = k; canvas.style.filter = `blur(${(k*10).toFixed(1)}px)`;
+    if (t >= 1){
+      showLayer(trans.to); if (trans.to === 0) cherryExplode(0); if (trans.to === 1) beanExplode(0);
+      const R = REST[trans.to], dp2 = divePoint(trans.to);
+      trans.phase = 1; trans.t0 = now;
+      if (trans.dir > 0){ trans.p0 = R.target.clone().add(R.pos.clone().sub(R.target).multiplyScalar(2.6)); trans.q0 = R.target.clone(); }
+      else { trans.p0 = dp2.clone().add(R.pos.clone().sub(dp2).setLength(0.15)); trans.q0 = dp2.clone(); }
+    }
+  } else if (trans.phase === 1){
+    const t = clamp((now - trans.t0) / 1150), k = easeOut(t), R = REST[trans.to];
+    camera.position.lerpVectors(trans.p0, R.pos, k);
+    controls.target.lerpVectors(trans.q0, R.target, k);
+    veil.style.opacity = 1 - easeOut(clamp(t*1.4)); canvas.style.filter = `blur(${((1 - easeOut(clamp(t*1.6)))*10).toFixed(1)}px)`;
+    if (t >= 1){ veil.style.opacity = 0; canvas.style.filter = ''; trans = null; controls.enabled = true; if (pending !== null){ const p = pending; pending = null; goTo(p); } }
+  } else { // reset
+    const t = clamp((now - trans.t0) / 900), k = ease(t), R = REST[state.layer];
+    camera.position.lerpVectors(trans.p0, R.pos, k); controls.target.lerpVectors(trans.q0, R.target, k);
+    if (t >= 1){ trans = null; controls.enabled = true; }
+  }
+}
+document.querySelectorAll('.layer-btn').forEach(b => b.addEventListener('click', () => goTo(+b.dataset.layer)));
+addEventListener('keydown', e => {
+  if (e.target.matches('input, select, textarea')) return;
+  if (e.key >= '1' && e.key <= '3') goTo(+e.key - 1);
+  else if (e.key === 'r' || e.key === 'R') resetView();
+  else if (e.key === 'Escape' && state.selected) selectCallout(null);
+});
+
+/* =====================================================================
+   CALLOUTS (HTML pills + SVG leader lines)
+   ===================================================================== */
+const calloutsEl = $('#callouts'), linesEl = $('#callout-lines');
+let liveCallouts = [];
+function anchorWorld(layer, id){
+  if (layer === 0) return cherryBack.localToWorld(cherryAnchor[id].clone());
+  if (layer === 1){ const [obj, v] = beanAnchor[id]; return obj.localToWorld(v.clone()); }
+  return cells.localToWorld(cellAnchor[id].clone());
+}
+function buildCallouts(){
+  calloutsEl.innerHTML = ''; linesEl.innerHTML = '';
+  liveCallouts = CALLOUTS[state.layer].map(c => {
+    const el = document.createElement('button');
+    el.type = 'button'; el.className = 'callout'; el.style.setProperty('--sw', c.sw); el.style.opacity = 0;
+    el.innerHTML = `<i></i>${c.label}<small>${c.tag}</small>`;
+    el.addEventListener('click', () => selectCallout(c.id));
+    calloutsEl.appendChild(el);
+    const ns = 'http://www.w3.org/2000/svg';
+    const line = document.createElementNS(ns, 'polyline'); line.setAttribute('fill','none'); line.setAttribute('stroke','rgba(255,220,176,.55)'); line.setAttribute('stroke-width','1');
+    const dot = document.createElementNS(ns, 'circle'); dot.setAttribute('r','3.2'); dot.setAttribute('fill', c.sw); dot.setAttribute('stroke','rgba(12,9,8,.8)'); dot.setAttribute('stroke-width','1.5');
+    const ring = document.createElementNS(ns, 'circle'); ring.setAttribute('r','7'); ring.setAttribute('fill','none'); ring.setAttribute('stroke', c.sw); ring.setAttribute('stroke-opacity','.45');
+    linesEl.append(line, ring, dot);
+    return {c, el, line, dot, ring};
+  });
+  refreshCalloutActive();
+}
+function refreshCalloutActive(){ liveCallouts.forEach(o => o.el.classList.toggle('active', o.c.id === state.selected)); }
+function hideCallouts(){ liveCallouts.forEach(o => { o.el.style.opacity = 0; o.el.style.pointerEvents = 'none'; o.line.style.opacity = o.dot.style.opacity = o.ring.style.opacity = 0; }); }
+let insets = {l:0, r:0, t:0, b:0}, W = 1, H = 1;
+function updateCallouts(now){
+  if (trans && trans.phase !== 2) return;
+  const vis = clamp((now - arrivalT - 900) / 500);
+  const compact = W < 700, kx = compact ? 0.55 : 1, ky = compact ? 0.6 : 1;
+  liveCallouts.forEach(o => {
+    const p = anchorWorld(state.layer, o.c.id).project(camera);
+    const x = (p.x * .5 + .5) * W, y = (-p.y * .5 + .5) * H;
+    const behind = p.z > 1;
+    const bw = o.el.offsetWidth, bh = o.el.offsetHeight;
+    let lx = x + o.c.dx * kx, ly = y + o.c.dy * ky;
+    let left = o.c.dx < 0 ? lx - bw : lx;
+    left = clamp(left, insets.l + 8, W - insets.r - bw - 8);
+    let top = clamp(ly - bh/2, insets.t + 8, H - insets.b - bh - 40);
+    const ex = o.c.dx < 0 ? left + bw : left, ey = top + bh/2;
+    const elbowX = ex + (o.c.dx < 0 ? 14 : -14);
+    o.el.style.transform = `translate(${left.toFixed(1)}px, ${top.toFixed(1)}px)`;
+    o.line.setAttribute('points', `${x.toFixed(1)},${y.toFixed(1)} ${elbowX.toFixed(1)},${ey.toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}`);
+    o.dot.setAttribute('cx', x); o.dot.setAttribute('cy', y); o.ring.setAttribute('cx', x); o.ring.setAttribute('cy', y);
+    const a = behind ? 0 : vis;
+    o.el.style.opacity = a; o.el.style.pointerEvents = a > .5 ? 'auto' : 'none';
+    o.line.style.opacity = o.dot.style.opacity = a; o.ring.style.opacity = a * (0.5 + 0.5*Math.sin(now/400));
+  });
+}
+
+/* =====================================================================
+   SCALE BAR
+   ===================================================================== */
+const scaleBar = $('#scale-bar'), scaleLabel = $('#scale-label'), scalebarEl = $('#scalebar'), keysEl = $('#keys');
+function updateScale(){
+  const L = LAYERS[state.layer];
+  const dist = camera.position.distanceTo(controls.target);
+  const pxPerWorld = H / (2 * dist * Math.tan(T3.MathUtils.degToRad(camera.fov / 2)));
+  const pxPerUnit = pxPerWorld / L.unitPerWorld;
+  const nice = [0.1,0.2,0.5,1,2,5,10,20,50,100,200];
+  let v = nice.find(n => n * pxPerUnit >= 60) || 200;
+  scaleBar.style.width = (v * pxPerUnit).toFixed(1) + 'px';
+  scaleLabel.textContent = v + ' ' + L.scaleUnit;
+}
+
+/* =====================================================================
+   RESIZE, LOOP
+   ===================================================================== */
+function layout(){
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, r.width); H = Math.max(1, r.height);
+  renderer.setSize(W, H, false);
+  camera.aspect = W / H;
+  const desktop = innerWidth >= 1100;
+  if (desktop){
+    const bag = $('.bag').getBoundingClientRect(), rec = $('.recipe').getBoundingClientRect(), ex = $('.explain').getBoundingClientRect(), nav = $('.layers').getBoundingClientRect();
+    insets = {l:bag.right - r.left, r:r.right - rec.left, t:nav.bottom - r.top, b:r.bottom - ex.top};
+  } else {
+    const nav = $('.layers').getBoundingClientRect();
+    insets = {l:0, r:0, t:nav.bottom - r.top, b:0};
+  }
+  const cx = (insets.l + (W - insets.r)) / 2, cy = (insets.t + (H - insets.b)) / 2;
+  camera.setViewOffset(W, H, W/2 - cx, H/2 - cy, W, H);
+  camera.updateProjectionMatrix();
+  scalebarEl.style.left = (insets.l + 18) + 'px'; scalebarEl.style.top = (H - insets.b - 46) + 'px';
+  keysEl.style.right = (insets.r + 18) + 'px'; keysEl.style.top = (H - insets.b - 30) + 'px';
+}
+new ResizeObserver(layout).observe(stage);
+addEventListener('resize', layout);
+
+function animate(now){
+  requestAnimationFrame(animate);
+  stepTransition(now);
+  const e = easeOut(clamp((now - arrivalT - 250) / 1500));
+  if (state.layer === 0) cherryExplode(e);
+  if (state.layer === 1) beanExplode(e);
+  if (state.layer === 2){
+    cellData.wallsMesh.scale.y = Math.max(0.001, e);
+    const t = now / 1000, m = new T3.Matrix4(), co2 = cellData.content.co2.im;
+    cellData.co2Base.forEach((b, i) => { co2.getMatrixAt(i, m); m.setPosition(b.x, b.y * e + Math.sin(t*1.3 + i) * 0.03, b.z); co2.setMatrixAt(i, m); });
+    co2.instanceMatrix.needsUpdate = true;
+    ['lipid','sugar','acid','melanoidin'].forEach(n => { cellData.content[n].im.visible = e > 0.35; });
+    const A = cellData.aroma, top = CELL.H;
+    A.seed.forEach((s, i) => {
+      const ph = (s.ph + t * s.sp) % 1, y = top * 0.6 + ph * 1.8;
+      A.pos[i*3] = s.x + Math.sin(t*0.8 + s.sw) * 0.12 * ph; A.pos[i*3+1] = y; A.pos[i*3+2] = s.z + Math.cos(t*0.7 + s.sw) * 0.12 * ph;
+      const a = Math.sin(ph * Math.PI) * e * 0.9;
+      A.pos && (A.cols[i*3] = 1.0*a, A.cols[i*3+1] = 0.62*a, A.cols[i*3+2] = 0.52*a);
+    });
+    A.aroma.geometry.attributes.position.needsUpdate = true; A.aroma.geometry.attributes.color.needsUpdate = true;
+  }
+  dust.rotation.y = now * 0.00001;
+  if (controls.enabled) controls.update();
+  else camera.lookAt(controls.target);
+  renderer.render(scene, camera);
+  updateCallouts(now); updateScale();
+}
+
+// boot
+showLayer(0);
+camera.position.copy(REST[0].target).add(REST[0].pos.clone().sub(REST[0].target).multiplyScalar(reduceMotion ? 1 : 1.6));
+controls.target.copy(REST[0].target);
+cherryExplode(0);
+layout();
+if (!reduceMotion){ trans = {t0:performance.now(), phase:2, p0:camera.position.clone(), q0:controls.target.clone()}; }
+requestAnimationFrame(animate);
+window.__bs = {goTo, state, camera, controls};
+})();
+</script>
