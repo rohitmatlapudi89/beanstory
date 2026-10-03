@@ -137,7 +137,8 @@ select option,select optgroup{background:#121829;color:var(--ink)}
 .nrow{display:grid;grid-template-columns:74px 1fr;gap:10px;padding:7px 0;border-top:1px solid var(--line)}
 .nrow:first-of-type{border-top:0}
 .nrow .k{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--cyan);padding-top:3px}
-.nrow .t{font-size:13.5px;color:var(--soft);line-height:1.5}
+.nrow .t{font-size:13.5px;color:#fff;line-height:1.5}
+.nrow .means{display:block;margin-top:4px;padding-left:10px;border-left:2px solid var(--amber);font-size:13px;color:var(--soft);line-height:1.5}
 .nhead{margin:10px 0 2px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--amber)}
 .nsteps{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px}
 .nsteps li{font-size:13.5px;color:var(--soft);line-height:1.5}
@@ -808,10 +809,54 @@ function freshNote(d){
   if (d <= 45) return `${d} days off roast: past peak, slightly muted.`;
   return `${d} days off roast: mostly degassed. Grind a touch finer.`;
 }
+// What each trait means for the physical bean and for brewing (cause -> consequence -> what to do)
+function altMeans(M){
+  if (M.effAlt < 1100) return 'Looser, thinner cell walls make the bean brittle once roasted: it shatters into more fines and gives up flavour fast. Grind a bit coarser, pour gently, avoid very hot water.';
+  if (M.effAlt < 1450) return 'Medium-strength cells grind fairly evenly with moderate fines. A standard grind and pour works.';
+  if (M.effAlt < 1800) return 'Tight, strong cells resist water and fracture cleanly into fewer fines. It can take a finer grind, hotter water and more agitation.';
+  return 'Very tight, thick-walled cells are slow to give up flavour and make few fines. Push it: finer grind, near-boiling water, lively pours.';
+}
+const PROC_MEANS = {
+  washed:'Intact, evenly dried cells: grinds cleanly with fewer fines and extracts at a steady pace. It tolerates a finer grind and hotter water.',
+  semiwashed:'A little extra sugar makes it slightly more soluble; structure stays close to washed.',
+  yhoney:'Slightly more soluble than washed, otherwise similar structure. Little change to grind needed.',
+  rhoney:'More dried-on sugar raises solubility; a touch more fines. Ease off the heat slightly.',
+  bhoney:'Lots of absorbed sugar: very soluble and a bit more fragile. Grind slightly coarser, pour gently.',
+  natural:'Absorbed sugars dissolve fast and the slowly dried cells are more fragile: more fines, quicker extraction. Slightly coarser and gentler, a touch cooler.',
+  anaerobic:'Very soluble, with strong ferment compounds that turn harsh when over-extracted. Coarser, cooler and calm pours.',
+  carbonic:'Highly aromatic and soluble. Keep extraction gentle so the fruit stays bright rather than boozy.',
+  cultured:'Soluble and aromatic, and the ferment-softened structure can make extra fines. Coarser, cooler, low agitation.',
+  coferment:'Added aromatics extract early and can dominate if pushed. Gentle, slightly cooler brew.',
+  thermal:'Aromatics extract quickly; heavy agitation flattens them. Gentle pours.',
+  wethulled:'Irregular, porous structure: uneven grind and plenty of fines. Coarser grind, gentle pours.',
+  monsooned:'Swollen, soft, brittle bean that crumbles into fines and extracts fast. Coarse grind, cooler water, low agitation.',
+};
+function roastMeans(a){
+  if (a >= 75) return 'Dense, low porosity: hard to extract, few fines. Finer grind, hotter water, longer contact.';
+  if (a >= 63) return 'Still fairly dense; extracts at a moderate pace with modest fines.';
+  if (a >= 53) return 'More porous and brittle: dissolves easily and makes more fines. Medium grind, just off the boil.';
+  if (a >= 43) return 'Porous and brittle: lots of fines and fast extraction, bitterness comes quickly. Coarser and cooler.';
+  return 'Hollow and fragile: shatters into fines and extracts almost instantly. Coarse, cool, short brew.';
+}
+function varMeans(M){
+  if (!M.st.varietals.size) return 'No varietal adjustment applied.';
+  const rob = M.vs.some(v => v.robusta), lip = M.lipids > .6, ac = M.vs.reduce((s, v) => s + v.acid, 0) / M.vs.length > .7;
+  return rob ? 'Robusta beans are smaller and harder, with more bitter compounds that extract readily. Keep the brew short and slightly cooler.'
+    : ac && lip ? 'Fast-dissolving acids plus heavier sugars and oils: pace the brew so the bright part does not run ahead of the sweet part.'
+    : ac ? 'Bright acids extract early; enough contact time brings sweetness to balance them.'
+    : lip ? 'Heavier sugars and oils come out later; a steady brew with a bit more contact time builds body.'
+    : 'Little effect on grind or pour; origin and roast matter more here.';
+}
+function freshMeans(d){
+  if (d < 7) return 'Lots of CO₂ pushes water away and causes uneven wetting. Longer bloom, gentle first pour.';
+  if (d <= 30) return 'Gas has settled: even wetting and predictable flow.';
+  if (d <= 45) return 'Less gas, so water wets the bed fast; a short bloom is enough.';
+  return 'Little gas and fading aromatics; grind slightly finer to keep strength.';
+}
 function builtinData(M){
   const lvl = v => v > .66 ? 'high' : v > .4 ? 'medium' : 'low', r = M.recipe;
   return {
-    traits:[['Altitude', altNote(M)], ['Process', PROC_NOTE[M.P.id]], ['Roast', roastNote(M.st.agtron)], ['Varietal', varNote(M)], ['Freshness', freshNote(M.st.days)]],
+    traits:[['Altitude', altNote(M), altMeans(M)], ['Process', PROC_NOTE[M.P.id], PROC_MEANS[M.P.id]], ['Roast', roastNote(M.st.agtron), roastMeans(M.st.agtron)], ['Varietal', varNote(M), varMeans(M)], ['Freshness', freshNote(M.st.days), freshMeans(M.st.days)]],
     cup:`${lvl(M.acidity)[0].toUpperCase() + lvl(M.acidity).slice(1)} acidity, ${lvl(M.sweetness)} sweetness, ${lvl(M.body)} body. ${M.solubility > .6 ? 'Easy to over-extract (bitter, dry).' : M.solubility < .4 ? 'Easy to under-extract (sour, thin).' : 'Balanced to extract.'}`,
     pour:[
       r.agitate === 'high' ? 'Bloom and stir well: the dense bed needs help to wet through.' : M.co2 > .65 ? 'Give the bloom its full time: lots of gas to clear.' : 'Bloom, then let the bed settle before pouring on.',
@@ -856,19 +901,21 @@ The bag:
 ${bagFacts(M)}
 
 Reply with only JSON in exactly this shape:
-{"traits":{"Altitude":"…","Process":"…","Roast":"…","Varietal":"…","Freshness":"…"},"cup":"…","pour":["…","…","…"]}
+{"traits":{"Altitude":{"what":"…","means":"…"},"Process":{"what":"…","means":"…"},"Roast":{"what":"…","means":"…"},"Varietal":{"what":"…","means":"…"},"Freshness":{"what":"…","means":"…"}},"cup":"…","pour":["…","…","…"]}
 
 Rules:
-- Each trait: ONE sentence, at most 22 words, cause then effect on the bean (e.g. what altitude with this origin's latitude does to cell structure; what the processing did inside the bean).
+- Each trait has two parts:
+  "what": at most 20 words. What this characteristic is and what it did to the bean's structure or chemistry (e.g. altitude with this origin's latitude -> how tight or loose the cells are; what the processing put into or did to the bean).
+  "means": at most 28 words. The physical consequence and the brewing implication: brittleness, how many fines it makes when ground, how fast it dissolves, over- vs under-extraction risk, and what that means for grind, temperature or pouring (no numbers).
 - "cup": at most 25 words: likely flavour/texture and whether it tends to over- or under-extract.
 - "pour": exactly 3 steps, each at most 20 words, explaining HOW to pour this bean and why. Talk only about the bean and how to pour it. Never mention grinders, grinder settings, clicks or exact numbers (grams, °C); the recipe panel covers those. Step 3 is what to change if sour vs bitter.
 - Plain words. Say "tends to" where evidence is uncertain (varietal flavour, processing effects). Nothing about the specific farm or roaster.`;
 }
 const AI = {fn:null, data:null, key:'', busy:false, ctl:null, err:'', tier:''};
-const bagKey = () => JSON.stringify([state.origin, state.altitude, state.process, state.agtron, [...state.varietals], state.days]);
+const bagKey = () => JSON.stringify(['v2', state.origin, state.altitude, state.process, state.agtron, [...state.varietals], state.days]);
 const clip = (t, n) => { t = String(t ?? '').trim(); return t.length > n ? t.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : t; };
 function notesHTML(d){
-  const rows = d.traits.map(([k, t]) => `<div class="nrow"><span class="k">${esc(k)}</span><span class="t">${esc(t)}</span></div>`).join('');
+  const rows = d.traits.map(([k, t, m]) => `<div class="nrow"><span class="k">${esc(k)}</span><span class="t">${esc(t)}${m ? `<span class="means">${esc(m)}</span>` : ''}</span></div>`).join('');
   return `${rows}<div class="nhead">In the cup</div><p>${esc(d.cup)}</p><div class="nhead">How to pour</div><ol class="nsteps">${d.pour.map(x => `<li>${esc(x)}</li>`).join('')}</ol>`;
 }
 function renderNotes(){
@@ -895,8 +942,8 @@ async function runAI(fresh){
     const j = await AI.fn.json(summaryPrompt(M), {...opts, onText:() => {}});
     const tr = j && j.traits || {};
     const pour = Array.isArray(j?.pour) ? j.pour.slice(0, 3).map(x => clip(x, 160)) : [];
-    if (!NOTE_KEYS.every(k => tr[k]) || pour.length < 2 || !j.cup) throw {code:'invalid_json'};
-    AI.data = {traits:NOTE_KEYS.map(k => [k, clip(tr[k], 190)]), cup:clip(j.cup, 200), pour};
+    if (!NOTE_KEYS.every(k => tr[k] && (tr[k].what || typeof tr[k] === 'string')) || pour.length < 2 || !j.cup) throw {code:'invalid_json'};
+    AI.data = {traits:NOTE_KEYS.map(k => typeof tr[k] === 'string' ? [k, clip(tr[k], 190), ''] : [k, clip(tr[k].what, 170), clip(tr[k].means, 210)]), cup:clip(j.cup, 200), pour};
     AI.key = key; AI.tier = tier;
   } catch (e){
     if (['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(e.code)){ AI.fn = null; $('#ask-sec').hidden = true; }
@@ -1218,14 +1265,15 @@ function makeCherryHalf(k){
   const mucShape = new THREE.Shape(); mucShape.absellipse(0, 0, .5 + .2*k, .6 + .16*k, 0, Math.PI*2);
   const muc = new THREE.Mesh(new THREE.ExtrudeGeometry(mucShape, {depth:.02, bevelEnabled:true, bevelThickness:.012, bevelSize:.025, bevelSegments:4, curveSegments:64}), mats.muc);
   half.add(muc);
+  const flats = [];
   [1,-1].forEach(sign => {
     const outer = new THREE.Shape(dPoints(sign, CH.w*k + CH.pw, CH.h*k + CH.pw, CH.gap - .03));
     outer.holes.push(new THREE.Path(dPoints(sign, CH.w*k, CH.h*k, CH.gap).reverse()));
     const parch = new THREE.Mesh(new THREE.ExtrudeGeometry(outer, {depth:.04, bevelEnabled:false, curveSegments:48}), mats.parch); parch.castShadow = true; half.add(parch);
     const b = new THREE.Mesh(new THREE.ExtrudeGeometry(new THREE.Shape(dPoints(sign, CH.w*k, CH.h*k, CH.gap)), {depth:.05, bevelEnabled:true, bevelThickness:.008, bevelSize:.008, bevelSegments:3, curveSegments:48}), mats.beanCut);
-    b.castShadow = true; half.add(b);
+    b.castShadow = true; half.add(b); flats.push(parch, b);
   });
-  return {half, skin, cap, rimRing, muc};
+  return {half, skin, cap, rimRing, muc, flats};
 }
 const dewMat = new THREE.MeshPhysicalMaterial({color:0xffffff, roughness:0, transmission:1, thickness:.04, ior:1.33, envMapIntensity:1.5});
 const bubbleMat = new THREE.MeshPhysicalMaterial({color:0xcfeaff, roughness:.02, transmission:.9, thickness:.02, ior:1.1, transparent:true, opacity:.6, envMapIntensity:1.4, depthWrite:false});
@@ -1316,7 +1364,9 @@ function updateCherry(dt, t){
   setOpacity(mats.parch, clamp(c.parch)); mats.parch.clearcoat = c.wet; mats.parch.roughness = .85 - c.wet*.65;
   mats.beanCut.color.copy(cherryCol.bean);
   const {back, front, dew} = cherryParts;
-  [back, front].forEach(h => { h.muc.scale.z = .3 + c.mucLevel*1.6; h.muc.visible = c.muc > .03; h.skin.castShadow = solid; h.cap.visible = h.rimRing.visible = c.skin > .2; });
+  const fruitGone = c.skin < .35;
+  [back, front].forEach(h => { h.muc.scale.z = .3 + c.mucLevel*1.6; h.muc.visible = c.muc > .03 && !fruitGone; h.skin.castShadow = solid; h.cap.visible = h.rimRing.visible = c.skin > .2; h.flats.forEach(f => f.visible = !fruitGone); });
+  updateParchCoffee(c, fruitGone);
   cherryParts.stem.visible = c.skin > .2;
   dew.visible = c.dew > .5;
   cherry.scale.set(c.scale, c.scale*1.08, c.scale);
@@ -1604,6 +1654,34 @@ function updateStack(dt, t, e){
   greenMat.color.copy(cherryCol.bean);
 }
 let greenDirty = true;
+// Cut view when the fruit has been removed (washed, honey, wet-hulled, monsooned):
+// two real 3D green beans in translucent parchment, flat sides facing, with optional mucilage coat.
+const pcoffee = new THREE.Group(); fx.add(pcoffee);
+const pcParch = stackMats.parch.clone(); pcParch.transparent = true; pcParch.opacity = .55; pcParch.depthWrite = false; pcParch.sheen = .1; pcParch.color.set(0xb89a6c); pcParch.envMapIntensity = .4; pcParch.side = THREE.FrontSide;
+const pcMuc = new THREE.MeshPhysicalMaterial({color:0xffffff, roughness:.03, transmission:1, thickness:.12, ior:1.36, clearcoat:1, attenuationColor:new THREE.Color(0xe0a040), attenuationDistance:1, envMapIntensity:1.5, transparent:true, depthWrite:false});
+const PC_TINT = new THREE.Color('#9fae8c');
+const pcBeans = [makeBean('whole', greenMat, 8.1), makeBean('whole', greenMat, 9.3)];
+const pcUnits = pcBeans.map((b, i) => {
+  const unit = new THREE.Group(), side = i ? -1 : 1;
+  const shellGeo = displace(new THREE.SphereGeometry(1, 96, 64), .05, 4, 3 + i);
+  shellGeo.scale(.82, 1.1, .44); shellGeo.translate(0, 0, .15);
+  const shell = new THREE.Mesh(shellGeo, pcParch); shell.renderOrder = 2;
+  const coat = new THREE.Mesh(shellGeo.clone().scale(1.06, 1.04, 1.12), pcMuc); coat.renderOrder = 3;
+  unit.add(b.grp, shell, coat); unit.rotation.y = side*(Math.PI/2 - .55);
+  unit.userData = {shell, coat, side};
+  pcoffee.add(unit); return unit;
+});
+pcoffee.scale.setScalar(.62); pcoffee.position.set(.15, 0, 0);
+function updateParchCoffee(c, show){
+  pcoffee.visible = show;
+  greenMat.sheen = show ? .1 : .5; greenMat.envMapIntensity = show ? .45 : .75;
+  if (!show) return;
+  const e = cherryParts.front.half.position.x / 1.75;
+  pcUnits.forEach(u => { u.position.x = u.userData.side*(.3 + .25*e); u.userData.shell.visible = c.parch > .2; u.userData.coat.visible = c.muc > .05; });
+  pcParch.opacity = .22*clamp(c.parch); pcParch.clearcoat = c.wet; pcParch.roughness = .82 - c.wet*.5;
+  greenMat.color.copy(cherryCol.bean).multiply(PC_TINT);
+  pcMuc.opacity = clamp(c.muc*1.2); pcMuc.attenuationColor.copy(cherryCol.muc); pcMuc.attenuationDistance = lerp(3, .4, clamp(c.mucLevel - .3));
+}
 const stackCallout = (id, label, tag, sw, src, when) => ({id, label, tag, sw, dx:150, dy:0, when, text:M => CALLOUTS[0].find(c => c.id === src).text(M)});
 const CALLOUTS_STACK = [
   stackCallout('s_skin', () => cherryT.skin < .5 ? 'Skin · removed' : 'Skin', 'exocarp', SW.skin, 'skin'),
@@ -1713,7 +1791,7 @@ function step3D(now, dt){
   let moving = false;
   for (const k in BPt){ const d = BPt[k] - BP[k]; if (Math.abs(d) > 1e-4){ BP[k] += d*(1 - Math.pow(.004, dt)); moving = true; } else BP[k] = BPt[k]; }
   if (state.layer === 1 && (moving || beanDirty)){ updateBeanGeometry(M); beanDirty = false; }
-  if (state.layer === 0 && state.cherryView === 'stack' && (moving || greenDirty)){ deformBean(greenBean, BP, greenColor); greenBean.grp.scale.setScalar(clamp(M.prim.size, .85, 1.25)); greenDirty = false; }
+  if (state.layer === 0 && (moving || greenDirty)){ deformBean(greenBean, BP, greenColor); greenBean.grp.scale.setScalar(clamp(M.prim.size, .85, 1.25)); pcBeans.forEach(b => { deformBean(b, {...BP, scale:1}, greenColor); b.grp.scale.setScalar(clamp(M.prim.size, .85, 1.25)); }); greenDirty = false; }
   if (state.layer === 1 && texDirty && now - lastTex > 120){ updateBeanTextures(M); lastTex = now; texDirty = moving; }
   if (state.layer === 2 && cellsDirty && now - lastCells > 110){ buildCells(M); lastCells = now; cellsDirty = false; buildCallouts(); }
 }
