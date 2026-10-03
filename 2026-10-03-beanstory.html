@@ -134,6 +134,14 @@ select option,select optgroup{background:#121829;color:var(--ink)}
 .nsec[hidden]{display:none!important}
 .nsec{display:flex;flex-direction:column;gap:10px}
 .nsec + .nsec{border-top:1px solid var(--line);padding-top:18px}
+.nrow{display:grid;grid-template-columns:74px 1fr;gap:10px;padding:7px 0;border-top:1px solid var(--line)}
+.nrow:first-of-type{border-top:0}
+.nrow .k{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--cyan);padding-top:3px}
+.nrow .t{font-size:13.5px;color:var(--soft);line-height:1.5}
+.nhead{margin:10px 0 2px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--amber)}
+.nsteps{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px}
+.nsteps li{font-size:13.5px;color:var(--soft);line-height:1.5}
+.nsteps li::marker{color:var(--amber);font-family:var(--f-mono);font-size:12px}
 .ai-out h3{margin:6px 0 2px;font-size:13px;font-weight:700;color:#fff;letter-spacing:.01em}
 .ai-out h3:first-child{margin-top:0}
 .ai-out p{margin:0;font-size:13.5px;color:var(--soft);line-height:1.6}
@@ -310,11 +318,12 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
       <div class="for" id="notes-for"></div>
     </div>
     <div class="recipe-body scroll">
-      <section class="nsec" aria-live="polite">
-        <div class="ai-bar"><span class="src" id="ai-src">Summary</span><span id="ai-actions"></span></div>
-        <div class="ai-out" id="ai-out"></div>
-      </section>
       <section class="nsec" id="reading"></section>
+      <section class="nsec" aria-live="polite">
+        <div class="ai-bar"><span class="label">About this bag</span><span id="ai-actions"></span></div>
+        <div class="ai-out" id="ai-out"></div>
+        <div class="ai-bar"><span class="src" id="ai-src">Summary</span></div>
+      </section>
       <section class="nsec" id="ask-sec" hidden>
         <span class="label">Ask Claude about this bag</span>
         <form class="ask" id="ask-form"><input id="ask-in" type="text" placeholder="e.g. Why does natural process make more fines?" aria-label="Your question"><button class="btn" type="submit">Ask</button></form>
@@ -755,72 +764,62 @@ $('#show-recipe').addEventListener('click', () => setRecipe(true));
 /* =====================================================================
    BEAN NOTES: plain-language summary (built in) + live Claude write-up
    ===================================================================== */
+// Short built-in notes: one line per topic, then the cup, then three pour steps. Same shape as Claude's.
 const PROC_NOTE = {
-  washed:'The fruit was stripped off right after picking and the seed fermented briefly in water before drying. Very little fruit sugar reaches the bean, so the flavour comes mostly from the seed itself: clean, crisp and true to origin.',
-  semiwashed:'The skin and pulp came off, but some sticky mucilage dried on the parchment. A little of its sugar seeps into the bean, adding sweetness and body without much ferment character.',
-  yhoney:'Only a thin coat of mucilage was left to dry on the parchment. It adds a touch of sweetness while the cup stays clean and bright.',
-  rhoney:'About half the mucilage stayed on and dried slowly. More of its sugars and mild ferment character soak into the bean: rounder, fruitier, sweeter.',
-  bhoney:'Nearly all the mucilage stayed on and dried slowly under cover. The bean picks up a lot of sugar and fruit character, close to a natural: jammy and full.',
-  natural:'The bean dried inside the whole cherry for weeks. Fruit sugars and fruity aroma compounds from the fermenting pulp seep through the parchment into the bean, and the long drying leaves it a little more fragile. Expect more sweetness, body and fruit, and slightly more fines when ground.',
-  anaerobic:'The cherries fermented in sealed, oxygen-free tanks. Microbes switch to making more lactic and acetic acid and lots of aroma compounds, which soak into the bean. Intense, often boozy or tropical, and quick to extract.',
-  carbonic:'Whole cherries fermented in tanks flushed with CO₂, as in Beaujolais wine. Fermentation starts inside each cherry, giving vivid, winey, candy-like fruit that carries into the bean.',
-  cultured:'Producers added selected yeasts or lactic bacteria instead of relying on wild microbes. Fermentation is more controlled: often a creamy, lactic mouthfeel and clear tropical fruit, and a bean that dissolves readily.',
-  coferment:'Fruit, spices or juice were added to the fermentation tank. Their sugars and aromas join in and soak into the bean, so part of the flavour comes from the additions themselves.',
-  thermal:'After fermentation the cherries were soaked in hot water, then cold. The swing is meant to open the parchment and lock aromas into the bean: very expressive, perfumed cups.',
-  wethulled:'The parchment was stripped while the bean was still wet (about 50% moisture), then the naked bean dried fast. This leaves an irregular, more porous structure: earthy, herbal, low acid and heavy-bodied.',
-  monsooned:'The dry green beans were left in open warehouses through the monsoon. They absorb moisture, swell, turn pale and lose most of their acidity: mellow, woody, spicy, and soft and brittle to grind.',
+  washed:'Fruit removed on day one, so little sugar reaches the bean. Clean, crisp, true to origin.',
+  semiwashed:'Some sticky mucilage dried on the parchment, adding a little sweetness and body.',
+  yhoney:'A thin coat of mucilage dried on. A touch sweeter than washed, still bright.',
+  rhoney:'About half the mucilage dried on slowly. Rounder, fruitier and sweeter.',
+  bhoney:'Nearly all the mucilage dried on slowly. Jammy, full, close to a natural.',
+  natural:'Dried inside the whole cherry: fruit sugars and aromas seep through the parchment into the bean. More sweetness, body and fines.',
+  anaerobic:'Fermented without oxygen, making more lactic and acetic acid. Intense, boozy or tropical; extracts fast.',
+  carbonic:'Whole cherries fermented under CO₂, starting inside each fruit. Vivid, winey, candy-like.',
+  cultured:'Selected yeasts or bacteria steered the fermentation. Often creamy, clean tropical fruit; dissolves readily.',
+  coferment:'Fruit or spices added to the tank; their aromas soak into the bean and shape the flavour.',
+  thermal:'Soaked hot, then cold, after fermentation to lock in aromatics. Very perfumed cups.',
+  wethulled:'Parchment stripped while wet; the bean dries fast and irregularly. Earthy, low acid, heavy body.',
+  monsooned:'Green beans swelled in monsoon humidity and lost most acidity. Mellow, woody, soft and brittle.',
 };
 function roastNote(a){
-  if (a >= 75) return `Agtron ${a} is a light roast, dropped soon after first crack. The bean stays dense, with most of its fruit acids and origin character intact. It is harder to extract, so it needs more heat and a finer grind.`;
-  if (a >= 63) return `Agtron ${a} is light-medium. Sugars have started to caramelise and the bean has opened up a little, but bright acidity and origin character still lead.`;
-  if (a >= 53) return `Agtron ${a} is a medium roast. Caramelisation and the Maillard reaction have peaked, acidity is softer and sweetness and body come forward. It extracts easily at moderate temperatures.`;
-  if (a >= 43) return `Agtron ${a} is medium-dark. The bean is noticeably more porous and brittle, roast flavours (chocolate, toast) start to cover origin character, and bitterness rises if pushed too hard.`;
-  return `Agtron ${a} is a dark roast, past second crack. Cells have ruptured and oils move to the surface; the bean is hollow and brittle, extracts very fast, and turns ashy with hot water.`;
+  if (a >= 75) return `Agtron ${a}: light. Dense and acid-rich, slow to extract; needs heat and a finer grind.`;
+  if (a >= 63) return `Agtron ${a}: light-medium. Sugars starting to caramelise; bright acidity still leads.`;
+  if (a >= 53) return `Agtron ${a}: medium. Sweetness and body peak, acidity softens; extracts easily.`;
+  if (a >= 43) return `Agtron ${a}: medium-dark. Porous and brittle; roast flavours start to cover origin.`;
+  return `Agtron ${a}: dark. Cells ruptured, oil on the surface; extracts very fast and turns ashy if hot.`;
 }
 function altNote(M){
-  const st = M.st, o = ORIGIN[st.origin], ea = Math.round(M.effAlt/50)*50, lat = Math.abs(o.lat);
-  const latLine = Math.abs(M.effAlt - st.altitude) >= 60 && o.name !== 'Other / unknown'
-    ? ` ${o.name} sits about ${Math.round(lat)}° from the equator, so ${st.altitude} m there behaves roughly like ${ea} m nearer the equator (${M.effAlt > st.altitude ? 'cooler' : 'warmer'} for its altitude).` : '';
-  let core;
-  if (M.effAlt < 1100) core = `${st.altitude} m is low-grown for arabica. Warm nights let the cherry ripen fast, so the cells grow large with thin walls: a softer, more porous bean that gives up flavour easily and leans rounder, nuttier and lower in acidity.`;
-  else if (M.effAlt < 1450) core = `${st.altitude} m is mid-altitude. Ripening is moderate, giving a medium-density bean with balanced acidity and sweetness.`;
-  else if (M.effAlt < 1800) core = `${st.altitude} m is high-grown. Cool nights slow ripening, so the cells pack tightly with thicker walls: a dense "hard bean" with more developed sugars and acids, and brighter, more complex acidity.`;
-  else core = `${st.altitude} m is very high. Slow ripening in the cold gives a strictly hard bean: tight cells, thick walls, and intense, layered acidity. It resists extraction.`;
-  return core + latLine;
+  const st = M.st, o = ORIGIN[st.origin], shift = Math.round((M.effAlt - st.altitude) / 50) * 50;
+  const lat = Math.abs(shift) >= 50 && o.name !== 'Other / unknown' ? ` At ${Math.round(Math.abs(o.lat))}° from the equator it acts like ~${Math.round(M.effAlt/50)*50} m.` : '';
+  const core = M.effAlt < 1100 ? 'Low-grown: fast ripening, large thin-walled cells. Soft, porous, rounder and lower in acidity.'
+    : M.effAlt < 1450 ? 'Mid-altitude: moderate ripening. Medium density, balanced acidity and sweetness.'
+    : M.effAlt < 1800 ? 'High-grown: slow ripening packs cells tight. Dense, brighter and more complex.'
+    : 'Very high: strictly hard bean, tight cells, intense acidity. Resists extraction.';
+  return core + lat;
 }
 function varNote(M){
-  const names = M.vs.map(v => v.name), list = names.slice(0, 3).join(' + ');
-  if (!M.st.varietals.size) return 'No varietal picked, so the model assumes a typical arabica.';
-  const a = M.vs.reduce((s, v) => s + v.acid, 0) / M.vs.length, b = M.vs.reduce((s, v) => s + v.body, 0) / M.vs.length, sw = M.vs.reduce((s, v) => s + v.sweet, 0) / M.vs.length;
+  if (!M.st.varietals.size) return 'Not set; the model assumes a typical arabica.';
+  const n = M.vs.length, a = M.vs.reduce((s, v) => s + v.acid, 0) / n, b = M.vs.reduce((s, v) => s + v.body, 0) / n;
   const rob = M.vs.some(v => v.robusta);
-  const traits = [a > .7 ? 'bright, often citrus or berry-like acidity' : a < .4 ? 'gentle acidity' : 'moderate acidity', b > .65 ? 'a fuller body' : b < .45 ? 'a lighter, tea-like body' : '', sw > .75 ? 'pronounced sweetness' : ''].filter(Boolean);
-  return `${list} ${names.length > 1 ? 'tend' : 'tends'} toward ${traits.join(', ').replace(/, ([^,]*)$/, ' and $1')}.${rob ? ' Robusta brings more caffeine, more chlorogenic acid (bitterness), less sugar and oil, and a heavy body.' : ''} Varietal traits are tendencies: altitude, soil and processing often matter more.`;
+  return `${M.vs.map(v => v.name).slice(0, 3).join(' + ')} tend${n > 1 ? '' : 's'} toward ${a > .7 ? 'bright acidity' : a < .4 ? 'gentle acidity' : 'balanced acidity'}${b > .65 ? ' and fuller body' : b < .45 ? ' and a lighter body' : ''}.${rob ? ' Robusta adds bitterness and caffeine.' : ''}`;
 }
 function freshNote(d){
-  if (d < 7) return `Roasted ${d} days ago: very fresh and still full of CO₂. Expect a big bloom and some sharpness; many filter coffees taste best from about a week after roast.`;
-  if (d <= 30) return `Roasted ${d} days ago: in the sweet spot for filter. CO₂ has settled enough for even extraction.`;
-  if (d <= 45) return `Roasted ${d} days ago: past its peak but fine. Less gas, slightly muted aromatics.`;
-  return `Roasted ${d} days ago: mostly degassed and losing aromatics. A finer grind and a short bloom help.`;
+  if (d < 7) return `${d} days off roast: very gassy. Big bloom; it often tastes better after a week.`;
+  if (d <= 30) return `${d} days off roast: the sweet spot for filter.`;
+  if (d <= 45) return `${d} days off roast: past peak, slightly muted.`;
+  return `${d} days off roast: mostly degassed. Grind a touch finer.`;
 }
-function cupNote(M){
-  const lvl = v => v > .66 ? 'high' : v > .4 ? 'medium' : 'low';
-  return `Expect ${lvl(M.acidity)} acidity, ${lvl(M.sweetness)} sweetness and ${lvl(M.body)} body. The bean is ${M.solubility > .6 ? 'easy to extract, so the risk is over-extraction (bitter, dry)' : M.solubility < .4 ? 'hard to extract, so the risk is under-extraction (sour, thin)' : 'balanced to extract'}.`;
+function builtinData(M){
+  const lvl = v => v > .66 ? 'high' : v > .4 ? 'medium' : 'low', r = M.recipe;
+  return {
+    traits:[['Altitude', altNote(M)], ['Process', PROC_NOTE[M.P.id]], ['Roast', roastNote(M.st.agtron)], ['Varietal', varNote(M)], ['Freshness', freshNote(M.st.days)]],
+    cup:`${lvl(M.acidity)[0].toUpperCase() + lvl(M.acidity).slice(1)} acidity, ${lvl(M.sweetness)} sweetness, ${lvl(M.body)} body. ${M.solubility > .6 ? 'Easy to over-extract (bitter, dry).' : M.solubility < .4 ? 'Easy to under-extract (sour, thin).' : 'Balanced to extract.'}`,
+    pour:[
+      r.agitate === 'high' ? 'Bloom and stir well: the dense bed needs help to wet through.' : M.co2 > .65 ? 'Give the bloom its full time: lots of gas to clear.' : 'Bloom, then let the bed settle before pouring on.',
+      r.agitate === 'high' ? 'Spiral pours out to the edges to keep water moving through tight cells.' : r.agitate === 'low' ? 'Pour slowly in the centre; little agitation keeps fines from clogging the paper.' : 'Small circles near the centre, a soft swirl at the end.',
+      'Sour or thin next time: grind finer or go hotter. Bitter or dry: grind coarser or cooler.',
+    ],
+  };
 }
-function pourNotes(M){
-  const r = M.recipe, b = r.pours[0];
-  return [
-    `Grind <b>${r.grindFull}</b> on the ${r.grinderName} (${r.grindWord.split(' · ')[0]}), water at <b>${r.tLo}–${r.tHi} °C</b>, ${r.dose} g to ${r.water} g (1:${r.ratio}).`,
-    `Bloom with <b>${b.to} g for ${r.bloomS} s</b>. ${M.co2 > .65 ? 'This one has lots of gas, so be patient.' : 'A normal bloom is enough.'}`,
-    `${r.style} with <b>${r.agitate} agitation</b>: ${r.agitate === 'high' ? 'spiral out to the edges to push water into the dense bed.' : r.agitate === 'low' ? 'pour slowly in the centre so fines stay put and the bed keeps flowing.' : 'small circles, a gentle swirl at the end.'}`,
-    `Aim to finish around <b>${fmtT(r.drain)}</b>. Sour or thin: go finer or hotter. Bitter or dry: go coarser or cooler.`,
-  ];
-}
-function builtinNotes(M){
-  const li = a => `<ul>${a.map(x => `<li>${x}</li>`).join('')}</ul>`;
-  return `<h3>Bean character</h3>${li([altNote(M), PROC_NOTE[M.P.id], roastNote(M.st.agtron), varNote(M), freshNote(M.st.days)])}`
-    + `<h3>In the cup</h3><p>${cupNote(M)}</p><h3>How to pour</h3>${li(pourNotes(M))}`;
-}
-
 // --- live Claude write-up -------------------------------------------------
 const esc = t => t.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function md(text){
@@ -849,48 +848,58 @@ function bagFacts(M){
     `Recipe the app suggests (Hario V60-02, paper filter): ${r.dose} g coffee, ${r.water} g water (1:${r.ratio}), ${r.tLo}-${r.tHi} °C, grind ${r.grindFull} on a ${r.grinderName} (${r.grindWord}), bloom ${r.pours[0].to} g for ${r.bloomS} s, ${r.style.toLowerCase()} with ${r.agitate} agitation, pours at ${r.pours.map(x => fmtT(x.t) + ' to ' + x.to + ' g').join(', ')}, finish about ${fmtT(r.drain)}.`,
   ].join('\n');
 }
+const NOTE_KEYS = ['Altitude', 'Process', 'Roast', 'Varietal', 'Freshness'];
 function summaryPrompt(M){
-  return `You are a coffee scientist explaining one bag of coffee to a curious home brewer who uses a Hario V60 and is not an expert. Explain what the bag's characteristics mean for the bean's physical structure and chemistry, what to expect in the cup, and how to pour it.
+  return `Explain one bag of coffee to a home V60 brewer who is not an expert.
 
 The bag:
 ${bagFacts(M)}
 
-Write exactly these three sections, in this format, with no intro or sign-off:
-## Bean character
-- One bullet each for: altitude together with origin/latitude (what it does to cell structure and density); processing (what physically and chemically happened, e.g. what seeps into the bean or what changes in the cell structure); roast level; varietal(s); freshness. One or two sentences per bullet, concrete and causal ("because… so…").
-## In the cup
-- Two bullets: likely flavour and texture, and whether this bean tends to over- or under-extract.
-## How to pour
-- Three or four bullets that explain the suggested recipe above in plain words. Keep its numbers; explain why each choice suits this bean. End with one bullet on what to change if it tastes sour vs bitter.
+Reply with only JSON in exactly this shape:
+{"traits":{"Altitude":"…","Process":"…","Roast":"…","Varietal":"…","Freshness":"…"},"cup":"…","pour":["…","…","…"]}
 
-Rules: under 230 words in total. Plain English, short sentences, bold at most one key phrase per bullet with **double asterisks**. Be accurate: where the science is uncertain (varietal flavour tendencies, how much processing changes cell walls), say "tends to" or "often". Do not invent facts about the specific farm or roaster.`;
+Rules:
+- Each trait: ONE sentence, at most 22 words, cause then effect on the bean (e.g. what altitude with this origin's latitude does to cell structure; what the processing did inside the bean).
+- "cup": at most 25 words: likely flavour/texture and whether it tends to over- or under-extract.
+- "pour": exactly 3 steps, each at most 20 words, explaining HOW to pour this bean and why. Do not repeat numbers (grams, °C, clicks); the recipe panel shows them. Step 3 is what to change if sour vs bitter.
+- Plain words. Say "tends to" where evidence is uncertain (varietal flavour, processing effects). Nothing about the specific farm or roaster.`;
 }
-const AI = {fn:null, text:'', key:'', busy:false, ctl:null, err:''};
-const bagKey = () => JSON.stringify([state.origin, state.altitude, state.process, state.agtron, [...state.varietals], state.days, state.dose, state.grinder]);
+const AI = {fn:null, data:null, key:'', busy:false, ctl:null, err:'', tier:''};
+const bagKey = () => JSON.stringify([state.origin, state.altitude, state.process, state.agtron, [...state.varietals], state.days]);
+const clip = (t, n) => { t = String(t ?? '').trim(); return t.length > n ? t.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : t; };
+function notesHTML(d){
+  const rows = d.traits.map(([k, t]) => `<div class="nrow"><span class="k">${esc(k)}</span><span class="t">${esc(t)}</span></div>`).join('');
+  return `${rows}<div class="nhead">In the cup</div><p>${esc(d.cup)}</p><div class="nhead">How to pour</div><ol class="nsteps">${d.pour.map(x => `<li>${esc(x)}</li>`).join('')}</ol>`;
+}
 function renderNotes(){
   $('#notes-for').textContent = `${state.origin} · ${state.altitude} m · ${M.P.name} · Agtron ${state.agtron}`;
-  const live = AI.text && AI.key === bagKey();
+  const live = AI.data && AI.key === bagKey();
   const out = $('#ai-out'), src = $('#ai-src'), act = $('#ai-actions');
-  if (AI.busy){ src.textContent = 'Claude is writing…'; src.className = 'src live'; act.innerHTML = '<button type="button" class="btn" id="ai-stop">Stop</button>'; $('#ai-stop').onclick = () => AI.ctl?.abort(); return; }
-  if (live){ out.innerHTML = md(AI.text); src.textContent = 'Written by Claude for this bag'; src.className = 'src live'; act.innerHTML = '<button type="button" class="btn" id="ai-go">Rewrite</button>'; }
+  if (AI.busy){ src.textContent = 'Claude (quick tier) is writing…'; src.className = 'src live'; act.innerHTML = '<button type="button" class="btn" id="ai-stop">Stop</button>'; $('#ai-stop').onclick = () => AI.ctl?.abort(); return; }
+  if (live){ out.innerHTML = notesHTML(AI.data); src.textContent = `Written by Claude · ${AI.tier} tier · cached 24 h`; src.className = 'src live'; act.innerHTML = '<button type="button" class="btn" id="ai-go">Rewrite</button>'; }
   else {
-    out.innerHTML = builtinNotes(M) + (AI.err ? `<p class="stale">${AI.err}</p>` : '');
-    src.textContent = AI.text ? 'Built-in summary · bag changed' : 'Built-in summary'; src.className = 'src';
-    act.innerHTML = AI.fn ? `<button type="button" class="btn primary" id="ai-go">${AI.text ? 'Update with Claude' : 'Explain with Claude'}</button>` : '';
+    out.innerHTML = notesHTML(builtinData(M)) + (AI.err ? `<p class="stale">${AI.err}</p>` : '');
+    src.textContent = AI.data ? 'Built-in summary · bag changed' : 'Built-in summary'; src.className = 'src';
+    act.innerHTML = AI.fn ? `<button type="button" class="btn primary" id="ai-go">${AI.data ? 'Update with Claude' : 'Explain with Claude'}</button>` : '';
   }
-  $('#ai-go')?.addEventListener('click', () => runAI(true));
+  $('#ai-go')?.addEventListener('click', () => runAI(!!live));
 }
 async function runAI(fresh){
   if (!AI.fn || AI.busy) return;
   AI.busy = true; AI.err = ''; AI.ctl = new AbortController();
-  const key = bagKey(), prompt = summaryPrompt(M);
+  const key = bagKey();
   renderNotes();
-  const out = $('#ai-out');
   try {
-    const {text} = await AI.fn(prompt, {signal:AI.ctl.signal, cache: fresh ? {gcTime:864e5, refresh:true} : {gcTime:864e5}, onText:({text}) => { out.innerHTML = md(text); }});
-    AI.text = text; AI.key = key;
+    const opts = {signal:AI.ctl.signal, modelTier:'quick', cache: fresh ? {gcTime:864e5, refresh:true} : {gcTime:864e5}};
+    let tier = 'quick';
+    const j = await AI.fn.json(summaryPrompt(M), {...opts, onText:() => {}});
+    const tr = j && j.traits || {};
+    const pour = Array.isArray(j?.pour) ? j.pour.slice(0, 3).map(x => clip(x, 160)) : [];
+    if (!NOTE_KEYS.every(k => tr[k]) || pour.length < 2 || !j.cup) throw {code:'invalid_json'};
+    AI.data = {traits:NOTE_KEYS.map(k => [k, clip(tr[k], 190)]), cup:clip(j.cup, 200), pour};
+    AI.key = key; AI.tier = tier;
   } catch (e){
-    if (e.code === 'not_granted' || e.code === 'sampling_disabled' || e.code === 'not_declared' || e.code === 'capability_disabled'){ AI.fn = null; $('#ask-sec').hidden = true; }
+    if (['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(e.code)){ AI.fn = null; $('#ask-sec').hidden = true; }
     else if (e.code === 'rate_limited') AI.err = 'Claude is busy or your usage limit was reached. Showing the built-in summary.';
     else if (e.code !== 'cancelled') AI.err = 'Claude could not finish this time. Showing the built-in summary.';
   } finally { AI.busy = false; renderNotes(); }
@@ -906,9 +915,9 @@ function bindAsk(){
     item.querySelector('.q').textContent = q; $('#qa').prepend(item);
     const a = item.querySelector('.a');
     QA.push({role:'user', content:q});
-    const rules = `You answer questions from a home V60 brewer (not an expert) about one bag of coffee and the science behind it. Be accurate and brief (under 120 words), plain English, use "tends to" where evidence is uncertain. Context:\n${bagFacts(M)}`;
+    const rules = `You answer questions from a home V60 brewer (not an expert) about one bag of coffee and the science behind it. Be accurate and brief (under 80 words, at most 4 short sentences or bullets), plain English, use "tends to" where evidence is uncertain. Context:\n${bagFacts(M)}`;
     try {
-      const {text} = await AI.fn([{role:'user', content:rules}, ...QA.slice(-6)], {cache:false, onText:({text}) => { a.innerHTML = md(text); }});
+      const {text} = await AI.fn([{role:'user', content:rules}, ...QA.slice(-6)], {cache:false, modelTier:'quick', onText:({text}) => { a.innerHTML = md(text); }});
       QA.push({role:'assistant', content:text});
     } catch (e){
       QA.pop();
