@@ -123,19 +123,41 @@ select option,select optgroup{background:#121829;color:var(--ink)}
 .keys kbd{font-family:var(--f-mono);font-size:10.5px;border:1px solid var(--line2);border-radius:4px;padding:0 4px;color:var(--mute)}
 
 /* ---------- reading card ---------- */
-.reading{position:absolute;z-index:4;bottom:22px;left:50%;transform:translateX(-50%);width:min(620px,calc(100% - 740px));max-height:40vh;display:flex;flex-direction:column}
-.reading-in{padding:16px 20px 18px;display:flex;flex-direction:column;gap:12px}
+.notes{position:absolute;z-index:4;right:24px;top:22px;bottom:22px;width:330px;display:flex;flex-direction:column}
+.notes[hidden],.recipe[hidden],.show-btn[hidden]{display:none!important}
 .eyebrow{font-family:var(--f-mono);font-size:11px;color:var(--cyan);letter-spacing:.04em;display:flex;justify-content:space-between;gap:10px}
 .eyebrow button{border:0;background:none;padding:0;color:var(--mute);font:inherit}
 .eyebrow button:hover{color:#fff}
-.eyebrow .tools{display:flex;gap:14px}
-.reading[hidden],.show-notes[hidden]{display:none!important}
-.show-notes{position:absolute;z-index:5;padding:6px 12px;border-radius:999px;font-size:12.5px;color:var(--soft);border:1px solid var(--line)}
-.show-notes:hover{color:#fff}
-.reading h2{margin:0;font-size:21px;font-weight:700;line-height:1.2;letter-spacing:-.2px;text-wrap:balance}
-.reading .lead{margin:0;font-size:14.5px;color:var(--soft);line-height:1.6;max-width:62ch;text-wrap:pretty}
-.reading .lead b{color:#fff;font-weight:600}
-.meters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.show-group{position:absolute;z-index:5;top:22px;right:24px;display:flex;gap:6px}
+.show-btn{padding:8px 14px;border-radius:12px;font-size:13px;font-weight:600;color:var(--ink);border:1px solid var(--line)}
+.show-btn:hover{border-color:var(--cyan)}
+.nsec[hidden]{display:none!important}
+.nsec{display:flex;flex-direction:column;gap:10px}
+.nsec + .nsec{border-top:1px solid var(--line);padding-top:18px}
+.ai-out h3{margin:6px 0 2px;font-size:13px;font-weight:700;color:#fff;letter-spacing:.01em}
+.ai-out h3:first-child{margin-top:0}
+.ai-out p{margin:0;font-size:13.5px;color:var(--soft);line-height:1.6}
+.ai-out ul{margin:0;padding-left:16px;display:flex;flex-direction:column;gap:6px}
+.ai-out li{font-size:13.5px;color:var(--soft);line-height:1.55}
+.ai-out li::marker{color:var(--cyan)}
+.ai-out b,.ai-out strong{color:#fff;font-weight:600}
+.ai-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--faint)}
+.ai-bar .src{font-family:var(--f-mono);letter-spacing:.04em}
+.ai-bar .src.live{color:var(--cyan)}
+.btn{border:1px solid var(--line2);background:rgba(255,255,255,.04);border-radius:9px;padding:6px 11px;font-size:12.5px;color:var(--ink)}
+.btn:hover{border-color:var(--cyan)}
+.btn.primary{background:var(--cyan);border-color:var(--cyan);color:#0b0f1a;font-weight:600}
+.btn[disabled]{opacity:.5;cursor:default}
+.stale{font-size:12px;color:var(--amber)}
+.ask{display:flex;gap:6px}
+.ask input{flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:9px;padding:7px 10px;font-size:13px}
+.qa{display:flex;flex-direction:column;gap:10px}
+.qa .q{font-size:13px;color:#fff;font-weight:600}
+.qa .a{font-size:13.5px;color:var(--soft);line-height:1.55}
+.reading-title{margin:0;font-size:17px;font-weight:700;line-height:1.25;text-wrap:balance}
+.lead{margin:0;font-size:14.5px;color:var(--soft);line-height:1.6;max-width:62ch;text-wrap:pretty}
+.lead b{color:#fff;font-weight:600}
+.meters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
 .meter{display:flex;flex-direction:column;gap:5px;min-width:0}
 .meter .top{display:flex;justify-content:space-between;font-size:11.5px;color:var(--mute);gap:4px}
 .meter .top b{font-family:var(--f-mono);font-weight:400;color:#fff}
@@ -198,7 +220,8 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
   .side{position:static;width:auto;display:contents}
   .brand{order:0}
   .side .chips{order:2}
-  .reading{position:relative;order:3;left:auto;bottom:auto;transform:none;width:auto;max-height:none}
+  .notes{position:relative;order:3;right:auto!important;top:auto;bottom:auto;width:auto}
+  .show-group{top:auto;bottom:12px;right:12px}
   .console{order:4}
   .recipe{position:relative;order:5;right:auto;top:auto;bottom:auto;width:auto}
   .scroll{overflow:visible}
@@ -208,7 +231,6 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
   .keys{display:none}
   .callout{font-size:11px;padding:3px 8px 3px 7px}
   .callout small{display:none}
-  .meters{grid-template-columns:repeat(2,minmax(0,1fr))}
   .toast{bottom:12px!important}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -229,8 +251,7 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
     </nav>
     <div class="viewtoggle glass" id="viewtoggle" role="group" aria-label="Cherry view"><button type="button" data-v="cut" aria-pressed="true">Cut open</button><button type="button" data-v="stack" aria-pressed="false">Exploded</button></div>
     <div class="toast glass" id="toast" aria-live="polite"></div>
-    <button type="button" class="show-notes glass" id="show-notes" hidden>Show notes</button>
-    <button type="button" class="show-recipe glass" id="show-recipe" hidden>V60 recipe ›</button>
+    <div class="show-group"><button type="button" class="show-btn glass" id="show-notes" hidden>Bean notes ›</button><button type="button" class="show-btn glass" id="show-recipe" hidden>V60 recipe ›</button></div>
     <div class="scalebar" id="scalebar"><span id="scale-label">5 mm</span><div class="bar" id="scale-bar" style="width:80px"></div></div>
     <div class="keys" id="keys">drag to orbit · scroll to zoom<br><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> layers · <kbd>R</kbd> reset · <kbd>X</kbd> cherry view · <kbd>H</kbd> notes · <kbd>V</kbd> recipe</div>
   </div>
@@ -248,6 +269,11 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
           <div class="field-head"><label class="label" for="altitude">Altitude</label><span class="readout" id="alt-out"></span></div>
           <input type="range" id="altitude" min="600" max="2400" step="50" value="1000">
           <div class="ticks"><span>600</span><span>1200</span><span>1800</span><span>2400 m</span></div>
+        </div>
+
+        <div class="field">
+          <label class="label" for="origin">Origin</label>
+          <select id="origin"></select>
         </div>
 
         <div class="field">
@@ -278,9 +304,24 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
     </section>
   </div>
 
-  <section class="reading glass" aria-live="polite">
-    <div class="reading-in scroll" id="reading"></div>
-  </section>
+  <aside class="notes glass" aria-label="Bean notes">
+    <div class="recipe-head">
+      <div class="rh-row"><h2>Bean notes</h2><button type="button" class="rh-hide" id="hide-notes">Hide ✕</button></div>
+      <div class="for" id="notes-for"></div>
+    </div>
+    <div class="recipe-body scroll">
+      <section class="nsec" aria-live="polite">
+        <div class="ai-bar"><span class="src" id="ai-src">Summary</span><span id="ai-actions"></span></div>
+        <div class="ai-out" id="ai-out"></div>
+      </section>
+      <section class="nsec" id="reading"></section>
+      <section class="nsec" id="ask-sec" hidden>
+        <span class="label">Ask Claude about this bag</span>
+        <form class="ask" id="ask-form"><input id="ask-in" type="text" placeholder="e.g. Why does natural process make more fines?" aria-label="Your question"><button class="btn" type="submit">Ask</button></form>
+        <div class="qa" id="qa"></div>
+      </section>
+    </div>
+  </aside>
 
   <aside class="recipe glass" aria-label="V60 recipe">
     <div class="recipe-head">
@@ -341,6 +382,31 @@ const PROCESSES = [
   {id:'monsooned', group:'Regional', name:'Monsooned Malabar', fruit:0, ferm:.1, weak:.45, sol:.2, sugar:.1, acid:-.4, lac:.05, ace:.05, est:.05, body:.55, temp:-.8, grind:.6, dens:-.2, stage:'monsooned', muc:0,
     title:'Monsooned Malabar: swollen by monsoon winds', lead:'An Indian classic. Green beans sit in open warehouses through the monsoon, <b>swell, turn pale</b> and lose most of their acidity.'},
 ];
+// Origin and approximate growing latitude (°). Further from the equator is cooler at the same altitude.
+const ORIGINS = [
+  ['India', 12, 'Asia'], ['Indonesia', 3, 'Asia'], ['Vietnam', 12, 'Asia'], ['China (Yunnan)', 23, 'Asia'], ['Thailand', 19, 'Asia'], ['Papua New Guinea', 6, 'Asia'], ['Yemen', 15, 'Asia'],
+  ['Ethiopia', 7, 'Africa'], ['Kenya', 0.5, 'Africa'], ['Rwanda', 2, 'Africa'], ['Burundi', 3, 'Africa'], ['Uganda', 1, 'Africa'], ['Tanzania', 4, 'Africa'],
+  ['Colombia', 4, 'Americas'], ['Brazil', 20, 'Americas'], ['Peru', 8, 'Americas'], ['Bolivia', 16, 'Americas'], ['Ecuador', 2, 'Americas'], ['Guatemala', 15, 'Americas'],
+  ['Honduras', 15, 'Americas'], ['El Salvador', 14, 'Americas'], ['Nicaragua', 13, 'Americas'], ['Costa Rica', 10, 'Americas'], ['Panama', 8.5, 'Americas'], ['Mexico', 17, 'Americas'], ['Hawaii (Kona)', 19.5, 'Americas'],
+  ['Other / unknown', 10, 'Other'],
+];
+const ORIGIN = Object.fromEntries(ORIGINS.map(([n, lat, r]) => [n, {name:n, lat, region:r}]));
+// ~30 m of altitude per degree of latitude away from ~10°, capped. A rough rule of thumb, not a law.
+const effAltitude = st => st.altitude + clamp((Math.abs(ORIGIN[st.origin].lat) - 10) * 30, -300, 300);
+// Grind conversions: a medium V60 setting and how far one grind step moves it. Typical starting points; units vary.
+const GRINDERS = [
+  {id:'c2', name:'Timemore C2 / C2S', base:18, step:2.2, min:8, max:36, fmt:v => Math.round(v) + ' clicks', short:v => Math.round(v) + ' clk'},
+  {id:'c3', name:'Timemore C3 / C3S', base:17, step:2, min:8, max:34, fmt:v => Math.round(v) + ' clicks', short:v => Math.round(v) + ' clk'},
+  {id:'c40', name:'Comandante C40', base:25, step:2.5, min:12, max:40, fmt:v => Math.round(v) + ' clicks', short:v => Math.round(v) + ' clk'},
+  {id:'kultra', name:'1Zpresso K-Ultra', base:7, step:.35, min:4, max:10, fmt:v => 'number ' + v.toFixed(1), short:v => v.toFixed(1)},
+  {id:'jx', name:'1Zpresso JX-Pro', base:88, step:6, min:40, max:140, fmt:v => { const c = Math.round(v); return `${Math.floor(c/40)}.${Math.floor((c%40)/4)}.${c%4} (rot.num.click)`; }, short:v => { const c = Math.round(v); return `${Math.floor(c/40)}.${Math.floor((c%40)/4)}.${c%4}`; }},
+  {id:'zp6', name:'1Zpresso ZP6 Special', base:4.6, step:.3, min:2, max:8, fmt:v => 'number ' + v.toFixed(1), short:v => v.toFixed(1)},
+  {id:'k6', name:'Kingrinder K6', base:100, step:7, min:60, max:150, fmt:v => Math.round(v) + ' clicks', short:v => Math.round(v) + ' clk'},
+  {id:'encore', name:'Baratza Encore', base:16, step:2, min:6, max:30, fmt:v => 'setting ' + Math.round(v), short:v => '#' + Math.round(v)},
+  {id:'ode2', name:'Fellow Ode Gen 2', base:4.3, step:.55, min:1, max:11, fmt:v => 'setting ' + (Math.round(v*3)/3).toFixed(1), short:v => (Math.round(v*3)/3).toFixed(1)},
+  {id:'um', name:'Other (target size)', base:750, step:90, min:450, max:1200, fmt:v => '≈ ' + Math.round(v/10)*10 + ' µm', short:v => Math.round(v/10)*10 + ' µm'},
+];
+const grinderOf = id => GRINDERS.find(g => g.id === id) || GRINDERS[0];
 const PROC = Object.fromEntries(PROCESSES.map(p => [p.id, p]));
 
 // SCA roast colour tiles: 95 very light, 85 light, 75 moderately light, 65 light-medium, 55 medium, 45 medium-dark, 35 dark, 25 very dark
@@ -379,7 +445,7 @@ const $ = (s, el=document) => el.querySelector(s);
 const clamp = (v,a=0,b=1) => Math.min(b, Math.max(a, v));
 const lerp = (a,b,t) => a + (b - a) * t;
 const pct = v => Math.round(v * 100);
-const state = {cherryView:'cut', layer:0, altitude:1000, process:'cultured', agtron:65, varietals:new Set(['SL9','Chandragiri']), dose:15, days:14, selected:null};
+const state = {cherryView:'cut', layer:0, altitude:1000, process:'cultured', agtron:65, varietals:new Set(['SL9','Chandragiri']), dose:15, days:14, origin:'India', grinder:(() => { try { return localStorage.getItem('bs-grinder') || 'c2'; } catch (e) { return 'c2'; } })(), selected:null};
 
 function piece(pts, x){ if (x <= pts[0][0]) return pts[0][1]; for (let i = 1; i < pts.length; i++) if (x <= pts[i][0]){ const [x0,y0] = pts[i-1], [x1,y1] = pts[i]; return lerp(y0, y1, (x - x0) / (x1 - x0)); } return pts[pts.length-1][1]; }
 
@@ -394,7 +460,7 @@ function model(st){
   const vs = vl.length ? vl : [VAR_DEFAULT];
   const avg = k => vs.reduce((a, v) => a + v[k], 0) / vs.length;
   const prim = vs[0];
-  const altN = clamp((st.altitude - 600) / 1800);
+  const effAlt = effAltitude(st), altN = clamp((effAlt - 600) / 1800);
   const roastN = clamp((95 - st.agtron) / 70);                 // SCA tiles: 95 very light … 25 very dark
   const fresh = clamp((21 - st.days) / 18);                    // CO₂ is mostly lost over the first 2–3 weeks
   const robusta = avg('robusta');
@@ -437,7 +503,7 @@ function model(st){
     wall: Math.max(0.014, 0.022 + 0.042*density - 0.006*P.weak - 0.012*roastN),
     rupture: clamp(0.02 + P.weak*0.06 + roastN*roastN*0.3 + (P.id === 'monsooned' ? .08 : 0)),
   };
-  const M = {st, P, prim, vs, altN, roastN, fresh, density, porosity, solubility, fines, acidity, sweetness, body, co2, acids, sugars, lipids, esters, smoke, oil, mel, bean, cell};
+  const M = {st, P, prim, vs, effAlt, altN, roastN, fresh, density, porosity, solubility, fines, acidity, sweetness, body, co2, acids, sugars, lipids, esters, smoke, oil, mel, bean, cell};
   M.recipe = recipe(M);
   return M;
 }
@@ -460,7 +526,7 @@ function recipe(M){
   // grind (Timemore C2S clicks, ~18 = medium)
   const ageAdj = -(clamp(st.days, 7, 60) - 14) / 46 * 1.2;
   const grindIdx = (roastN - 0.45)*3.2 + (0.5 - density)*1.6 + P.grind*0.8 + ageAdj;
-  const clicks = Math.round(clamp(18 + 2.2*grindIdx, 11, 30));
+  const G = grinderOf(st.grinder), gv = clamp(G.base + G.step*grindIdx, G.min, G.max), clicks = G.short(gv), grindFull = G.fmt(gv);
   const grindWord = grindIdx < -1 ? 'medium-fine · table salt' : grindIdx < .5 ? 'medium · sand' : grindIdx < 2 ? 'medium-coarse · sea salt' : 'coarse · kosher salt';
   // ratio: more water for light, dense coffees; less for dark, heavy ones
   const ratio = clamp(Math.round((15 + 1.4*(1 - roastN) + .6*lightDense + .3*ferment - .4*M.body) * 2) / 2, 14.5, 17);
@@ -503,7 +569,7 @@ function recipe(M){
     `<b>${dWord[0].toUpperCase() + dWord.slice(1)} bean at ${st.altitude} m, ${P.name.toLowerCase()}:</b> ${density > .6 ? 'grind finer to open the tight cells.' : 'it gives up flavour easily, no need to push.'}${ferment > .5 ? ' Ferment notes turn harsh when over-extracted, so slightly cooler.' : ''}`,
     `<b>1:${ratio}, roasted ${st.days} days ago:</b> ${ratio >= 16.5 ? 'more water to fully extract a light roast.' : ratio <= 15 ? 'less water keeps body in a darker roast.' : 'a middle ratio balances clarity and body.'} ${st.days < 7 ? 'Very fresh: big bloom.' : st.days > 35 ? 'Mostly degassed: small bloom, finer grind.' : ''}`,
   ];
-  return {temp, tLo, tHi, clicks, grindWord, ratio, dose, water, pours, drain, why, style, agitate, bloomS};
+  return {temp, tLo, tHi, clicks, grindFull, grinderName:G.name, grindIdx, grindWord, ratio, dose, water, pours, drain, why, style, agitate, bloomS};
 }
 
 
@@ -517,6 +583,10 @@ const procSel = $('#process');
   procSel.appendChild(og);
 });
 procSel.value = state.process;
+const oriSel = $('#origin');
+['Asia','Africa','Americas','Other'].forEach(r => { const og = document.createElement('optgroup'); og.label = r; ORIGINS.filter(o => o[2] === r).forEach(([n]) => og.appendChild(new Option(n, n))); oriSel.appendChild(og); });
+oriSel.value = state.origin;
+oriSel.addEventListener('change', e => { state.origin = e.target.value; changed('origin'); });
 const roastSeg = $('#roast');
 ROASTS.forEach(r => { const b = document.createElement('button'); b.type = 'button'; b.textContent = r.name; b.dataset.r = r.id; b.addEventListener('click', () => { state.agtron = r.ag; $('#agtron').value = r.ag; changed('roast'); }); roastSeg.appendChild(b); });
 $('#altitude').addEventListener('input', e => { state.altitude = +e.target.value; changed('altitude'); });
@@ -546,7 +616,7 @@ function renderChips(){
 
 let M = model(state);
 function renderConsole(){
-  $('#altitude').value = state.altitude; procSel.value = state.process; $('#agtron').value = state.agtron;
+  $('#altitude').value = state.altitude; procSel.value = state.process; oriSel.value = state.origin; $('#agtron').value = state.agtron;
   $('#alt-out').textContent = state.altitude.toLocaleString('en-US') + ' MASL';
   $('#agtron-out').textContent = 'Agtron ' + state.agtron;
   $('#days').value = state.days; $('#days-out').textContent = state.days + ' days ago';
@@ -651,36 +721,210 @@ function reading(M){
 function renderReading(){
   const R = reading(M), meta = LAYER_META[state.layer];
   const sel = state.selected && currentCallouts().find(c => c.id === state.selected);
-  let html = `<div class="eyebrow"><span>${meta.eyebrow}${sel ? ' · ' + labelOf(sel) : ''}</span><span class="tools">${sel ? '<button type="button" id="back">← Overview</button>' : ''}<button type="button" id="hide-notes" aria-label="Hide notes">Hide ✕</button></span></div>`;
-  if (sel){
-    html += `<h2>${labelOf(sel)}</h2><p class="lead">${sel.text(M)}</p>`;
-  } else {
-    html += `<h2>${R.title}</h2><p class="lead">${R.lead}</p>`;
+  let html = `<div class="eyebrow"><span>${meta.eyebrow}${sel ? ' · ' + labelOf(sel) : ''}</span>${sel ? '<button type="button" id="back">← This layer</button>' : ''}</div>`;
+  if (sel) html += `<h3 class="reading-title">${labelOf(sel)}</h3><p class="lead">${sel.text(M)}</p>`;
+  else {
+    html += `<h3 class="reading-title">${R.title}</h3><p class="lead">${R.lead}</p>`;
     html += `<div class="meters">${R.meters.map(([k,v]) => `<div class="meter"><div class="top"><span>${k}</span><b>${pct(clamp(v))}</b></div><div class="track"><span class="fill" style="width:${pct(clamp(v))}%"></span></div></div>`).join('')}</div>`;
     if (R.legend) html += `<div class="legend">${CALLOUTS[2].map(c => `<button type="button" data-c="${c.id}" style="--sw:${c.sw}"><i></i>${labelOf(c)}</button>`).join('')}</div>`;
-    html += `<div class="tip"><span class="label">V60</span><span>${R.tip}</span></div>`;
-    html += `<details class="more"><summary>Read more</summary><p>${R.more}</p></details>`;
+    html += `<div class="hint">Click a label in the 3D view to read about it here.</div>`;
   }
-  const el = $('#reading'), open = el.querySelector('details.more')?.open;
+  const el = $('#reading');
   el.innerHTML = html;
-  if (open && el.querySelector('details.more')) el.querySelector('details.more').open = true;
   el.querySelector('#back')?.addEventListener('click', () => selectCallout(null));
-  el.querySelector('#hide-notes').addEventListener('click', () => setNotes(false));
   el.querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', () => selectCallout(b.dataset.c)));
 }
-function setNotes(show){
-  $('.reading').hidden = !show; $('#show-notes').hidden = show;
-  try { localStorage.setItem('bs-notes', show ? '1' : '0'); } catch (e) {}
+const wideSides = () => innerWidth >= 1600;
+function syncPanels(){
+  if (isBig() && !wideSides() && !$('.notes').hidden && !$('.recipe').hidden) $('.recipe').hidden = true;
+  $('#show-notes').hidden = !$('.notes').hidden; $('#show-recipe').hidden = !$('.recipe').hidden;
   if (window.__layout) window.__layout();
 }
+function setPanel(which, show){
+  const el = $('.' + which), other = $(which === 'notes' ? '.recipe' : '.notes');
+  if (show && isBig() && !wideSides()) other.hidden = true;
+  el.hidden = !show;
+  try { localStorage.setItem('bs-' + which, show ? '1' : '0'); } catch (e) {}
+  syncPanels();
+}
+const setNotes = show => setPanel('notes', show), setRecipe = show => setPanel('recipe', show);
 $('#show-notes').addEventListener('click', () => setNotes(true));
-function setRecipe(show){
-  $('.recipe').hidden = !show; $('#show-recipe').hidden = show;
-  try { localStorage.setItem('bs-recipe', show ? '1' : '0'); } catch (e) {}
-  if (window.__layout) window.__layout();
-}
+$('#hide-notes').addEventListener('click', () => setNotes(false));
 $('#hide-recipe').addEventListener('click', () => setRecipe(false));
 $('#show-recipe').addEventListener('click', () => setRecipe(true));
+/* =====================================================================
+   BEAN NOTES: plain-language summary (built in) + live Claude write-up
+   ===================================================================== */
+const PROC_NOTE = {
+  washed:'The fruit was stripped off right after picking and the seed fermented briefly in water before drying. Very little fruit sugar reaches the bean, so the flavour comes mostly from the seed itself: clean, crisp and true to origin.',
+  semiwashed:'The skin and pulp came off, but some sticky mucilage dried on the parchment. A little of its sugar seeps into the bean, adding sweetness and body without much ferment character.',
+  yhoney:'Only a thin coat of mucilage was left to dry on the parchment. It adds a touch of sweetness while the cup stays clean and bright.',
+  rhoney:'About half the mucilage stayed on and dried slowly. More of its sugars and mild ferment character soak into the bean: rounder, fruitier, sweeter.',
+  bhoney:'Nearly all the mucilage stayed on and dried slowly under cover. The bean picks up a lot of sugar and fruit character, close to a natural: jammy and full.',
+  natural:'The bean dried inside the whole cherry for weeks. Fruit sugars and fruity aroma compounds from the fermenting pulp seep through the parchment into the bean, and the long drying leaves it a little more fragile. Expect more sweetness, body and fruit, and slightly more fines when ground.',
+  anaerobic:'The cherries fermented in sealed, oxygen-free tanks. Microbes switch to making more lactic and acetic acid and lots of aroma compounds, which soak into the bean. Intense, often boozy or tropical, and quick to extract.',
+  carbonic:'Whole cherries fermented in tanks flushed with CO₂, as in Beaujolais wine. Fermentation starts inside each cherry, giving vivid, winey, candy-like fruit that carries into the bean.',
+  cultured:'Producers added selected yeasts or lactic bacteria instead of relying on wild microbes. Fermentation is more controlled: often a creamy, lactic mouthfeel and clear tropical fruit, and a bean that dissolves readily.',
+  coferment:'Fruit, spices or juice were added to the fermentation tank. Their sugars and aromas join in and soak into the bean, so part of the flavour comes from the additions themselves.',
+  thermal:'After fermentation the cherries were soaked in hot water, then cold. The swing is meant to open the parchment and lock aromas into the bean: very expressive, perfumed cups.',
+  wethulled:'The parchment was stripped while the bean was still wet (about 50% moisture), then the naked bean dried fast. This leaves an irregular, more porous structure: earthy, herbal, low acid and heavy-bodied.',
+  monsooned:'The dry green beans were left in open warehouses through the monsoon. They absorb moisture, swell, turn pale and lose most of their acidity: mellow, woody, spicy, and soft and brittle to grind.',
+};
+function roastNote(a){
+  if (a >= 75) return `Agtron ${a} is a light roast, dropped soon after first crack. The bean stays dense, with most of its fruit acids and origin character intact. It is harder to extract, so it needs more heat and a finer grind.`;
+  if (a >= 63) return `Agtron ${a} is light-medium. Sugars have started to caramelise and the bean has opened up a little, but bright acidity and origin character still lead.`;
+  if (a >= 53) return `Agtron ${a} is a medium roast. Caramelisation and the Maillard reaction have peaked, acidity is softer and sweetness and body come forward. It extracts easily at moderate temperatures.`;
+  if (a >= 43) return `Agtron ${a} is medium-dark. The bean is noticeably more porous and brittle, roast flavours (chocolate, toast) start to cover origin character, and bitterness rises if pushed too hard.`;
+  return `Agtron ${a} is a dark roast, past second crack. Cells have ruptured and oils move to the surface; the bean is hollow and brittle, extracts very fast, and turns ashy with hot water.`;
+}
+function altNote(M){
+  const st = M.st, o = ORIGIN[st.origin], ea = Math.round(M.effAlt/50)*50, lat = Math.abs(o.lat);
+  const latLine = Math.abs(M.effAlt - st.altitude) >= 60 && o.name !== 'Other / unknown'
+    ? ` ${o.name} sits about ${Math.round(lat)}° from the equator, so ${st.altitude} m there behaves roughly like ${ea} m nearer the equator (${M.effAlt > st.altitude ? 'cooler' : 'warmer'} for its altitude).` : '';
+  let core;
+  if (M.effAlt < 1100) core = `${st.altitude} m is low-grown for arabica. Warm nights let the cherry ripen fast, so the cells grow large with thin walls: a softer, more porous bean that gives up flavour easily and leans rounder, nuttier and lower in acidity.`;
+  else if (M.effAlt < 1450) core = `${st.altitude} m is mid-altitude. Ripening is moderate, giving a medium-density bean with balanced acidity and sweetness.`;
+  else if (M.effAlt < 1800) core = `${st.altitude} m is high-grown. Cool nights slow ripening, so the cells pack tightly with thicker walls: a dense "hard bean" with more developed sugars and acids, and brighter, more complex acidity.`;
+  else core = `${st.altitude} m is very high. Slow ripening in the cold gives a strictly hard bean: tight cells, thick walls, and intense, layered acidity. It resists extraction.`;
+  return core + latLine;
+}
+function varNote(M){
+  const names = M.vs.map(v => v.name), list = names.slice(0, 3).join(' + ');
+  if (!M.st.varietals.size) return 'No varietal picked, so the model assumes a typical arabica.';
+  const a = M.vs.reduce((s, v) => s + v.acid, 0) / M.vs.length, b = M.vs.reduce((s, v) => s + v.body, 0) / M.vs.length, sw = M.vs.reduce((s, v) => s + v.sweet, 0) / M.vs.length;
+  const rob = M.vs.some(v => v.robusta);
+  const traits = [a > .7 ? 'bright, often citrus or berry-like acidity' : a < .4 ? 'gentle acidity' : 'moderate acidity', b > .65 ? 'a fuller body' : b < .45 ? 'a lighter, tea-like body' : '', sw > .75 ? 'pronounced sweetness' : ''].filter(Boolean);
+  return `${list} ${names.length > 1 ? 'tend' : 'tends'} toward ${traits.join(', ').replace(/, ([^,]*)$/, ' and $1')}.${rob ? ' Robusta brings more caffeine, more chlorogenic acid (bitterness), less sugar and oil, and a heavy body.' : ''} Varietal traits are tendencies: altitude, soil and processing often matter more.`;
+}
+function freshNote(d){
+  if (d < 7) return `Roasted ${d} days ago: very fresh and still full of CO₂. Expect a big bloom and some sharpness; many filter coffees taste best from about a week after roast.`;
+  if (d <= 30) return `Roasted ${d} days ago: in the sweet spot for filter. CO₂ has settled enough for even extraction.`;
+  if (d <= 45) return `Roasted ${d} days ago: past its peak but fine. Less gas, slightly muted aromatics.`;
+  return `Roasted ${d} days ago: mostly degassed and losing aromatics. A finer grind and a short bloom help.`;
+}
+function cupNote(M){
+  const lvl = v => v > .66 ? 'high' : v > .4 ? 'medium' : 'low';
+  return `Expect ${lvl(M.acidity)} acidity, ${lvl(M.sweetness)} sweetness and ${lvl(M.body)} body. The bean is ${M.solubility > .6 ? 'easy to extract, so the risk is over-extraction (bitter, dry)' : M.solubility < .4 ? 'hard to extract, so the risk is under-extraction (sour, thin)' : 'balanced to extract'}.`;
+}
+function pourNotes(M){
+  const r = M.recipe, b = r.pours[0];
+  return [
+    `Grind <b>${r.grindFull}</b> on the ${r.grinderName} (${r.grindWord.split(' · ')[0]}), water at <b>${r.tLo}–${r.tHi} °C</b>, ${r.dose} g to ${r.water} g (1:${r.ratio}).`,
+    `Bloom with <b>${b.to} g for ${r.bloomS} s</b>. ${M.co2 > .65 ? 'This one has lots of gas, so be patient.' : 'A normal bloom is enough.'}`,
+    `${r.style} with <b>${r.agitate} agitation</b>: ${r.agitate === 'high' ? 'spiral out to the edges to push water into the dense bed.' : r.agitate === 'low' ? 'pour slowly in the centre so fines stay put and the bed keeps flowing.' : 'small circles, a gentle swirl at the end.'}`,
+    `Aim to finish around <b>${fmtT(r.drain)}</b>. Sour or thin: go finer or hotter. Bitter or dry: go coarser or cooler.`,
+  ];
+}
+function builtinNotes(M){
+  const li = a => `<ul>${a.map(x => `<li>${x}</li>`).join('')}</ul>`;
+  return `<h3>Bean character</h3>${li([altNote(M), PROC_NOTE[M.P.id], roastNote(M.st.agtron), varNote(M), freshNote(M.st.days)])}`
+    + `<h3>In the cup</h3><p>${cupNote(M)}</p><h3>How to pour</h3>${li(pourNotes(M))}`;
+}
+
+// --- live Claude write-up -------------------------------------------------
+const esc = t => t.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function md(text){
+  let html = '', list = false;
+  const inline = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  for (const raw of text.split('\n')){
+    const line = raw.trim();
+    if (/^[-*•] /.test(line)){ if (!list){ html += '<ul>'; list = true; } html += `<li>${inline(line.slice(2))}</li>`; continue; }
+    if (list){ html += '</ul>'; list = false; }
+    if (!line) continue;
+    if (/^#{1,4} /.test(line)) html += `<h3>${inline(line.replace(/^#+ /, ''))}</h3>`;
+    else html += `<p>${inline(line)}</p>`;
+  }
+  return html + (list ? '</ul>' : '');
+}
+function bagFacts(M){
+  const st = M.st, r = M.recipe, p = v => Math.round(v*100);
+  return [
+    `Origin: ${st.origin} (about ${Math.abs(ORIGIN[st.origin].lat)}° from the equator)`,
+    `Altitude: ${st.altitude} m (model treats it like ~${Math.round(M.effAlt/50)*50} m equatorial-equivalent)`,
+    `Processing: ${M.P.name}`,
+    `Roast: Agtron ${st.agtron} on the SCA scale (95 very light … 25 very dark)`,
+    `Varietal(s): ${st.varietals.size ? [...st.varietals].join(', ') : 'unknown'}`,
+    `Roasted ${st.days} days ago`,
+    `Model estimates 0-100 (relative, not lab values): density ${p(M.density)}, porosity ${p(M.porosity)}, fines risk ${p(M.fines)}, solubility ${p(M.solubility)}, acidity ${p(M.acidity)}, sweetness ${p(M.sweetness)}, body ${p(M.body)}, CO2 ${p(M.co2)}`,
+    `Recipe the app suggests (Hario V60-02, paper filter): ${r.dose} g coffee, ${r.water} g water (1:${r.ratio}), ${r.tLo}-${r.tHi} °C, grind ${r.grindFull} on a ${r.grinderName} (${r.grindWord}), bloom ${r.pours[0].to} g for ${r.bloomS} s, ${r.style.toLowerCase()} with ${r.agitate} agitation, pours at ${r.pours.map(x => fmtT(x.t) + ' to ' + x.to + ' g').join(', ')}, finish about ${fmtT(r.drain)}.`,
+  ].join('\n');
+}
+function summaryPrompt(M){
+  return `You are a coffee scientist explaining one bag of coffee to a curious home brewer who uses a Hario V60 and is not an expert. Explain what the bag's characteristics mean for the bean's physical structure and chemistry, what to expect in the cup, and how to pour it.
+
+The bag:
+${bagFacts(M)}
+
+Write exactly these three sections, in this format, with no intro or sign-off:
+## Bean character
+- One bullet each for: altitude together with origin/latitude (what it does to cell structure and density); processing (what physically and chemically happened, e.g. what seeps into the bean or what changes in the cell structure); roast level; varietal(s); freshness. One or two sentences per bullet, concrete and causal ("because… so…").
+## In the cup
+- Two bullets: likely flavour and texture, and whether this bean tends to over- or under-extract.
+## How to pour
+- Three or four bullets that explain the suggested recipe above in plain words. Keep its numbers; explain why each choice suits this bean. End with one bullet on what to change if it tastes sour vs bitter.
+
+Rules: under 230 words in total. Plain English, short sentences, bold at most one key phrase per bullet with **double asterisks**. Be accurate: where the science is uncertain (varietal flavour tendencies, how much processing changes cell walls), say "tends to" or "often". Do not invent facts about the specific farm or roaster.`;
+}
+const AI = {fn:null, text:'', key:'', busy:false, ctl:null, err:''};
+const bagKey = () => JSON.stringify([state.origin, state.altitude, state.process, state.agtron, [...state.varietals], state.days, state.dose, state.grinder]);
+function renderNotes(){
+  $('#notes-for').textContent = `${state.origin} · ${state.altitude} m · ${M.P.name} · Agtron ${state.agtron}`;
+  const live = AI.text && AI.key === bagKey();
+  const out = $('#ai-out'), src = $('#ai-src'), act = $('#ai-actions');
+  if (AI.busy){ src.textContent = 'Claude is writing…'; src.className = 'src live'; act.innerHTML = '<button type="button" class="btn" id="ai-stop">Stop</button>'; $('#ai-stop').onclick = () => AI.ctl?.abort(); return; }
+  if (live){ out.innerHTML = md(AI.text); src.textContent = 'Written by Claude for this bag'; src.className = 'src live'; act.innerHTML = '<button type="button" class="btn" id="ai-go">Rewrite</button>'; }
+  else {
+    out.innerHTML = builtinNotes(M) + (AI.err ? `<p class="stale">${AI.err}</p>` : '');
+    src.textContent = AI.text ? 'Built-in summary · bag changed' : 'Built-in summary'; src.className = 'src';
+    act.innerHTML = AI.fn ? `<button type="button" class="btn primary" id="ai-go">${AI.text ? 'Update with Claude' : 'Explain with Claude'}</button>` : '';
+  }
+  $('#ai-go')?.addEventListener('click', () => runAI(true));
+}
+async function runAI(fresh){
+  if (!AI.fn || AI.busy) return;
+  AI.busy = true; AI.err = ''; AI.ctl = new AbortController();
+  const key = bagKey(), prompt = summaryPrompt(M);
+  renderNotes();
+  const out = $('#ai-out');
+  try {
+    const {text} = await AI.fn(prompt, {signal:AI.ctl.signal, cache: fresh ? {gcTime:864e5, refresh:true} : {gcTime:864e5}, onText:({text}) => { out.innerHTML = md(text); }});
+    AI.text = text; AI.key = key;
+  } catch (e){
+    if (e.code === 'not_granted' || e.code === 'sampling_disabled' || e.code === 'not_declared' || e.code === 'capability_disabled'){ AI.fn = null; $('#ask-sec').hidden = true; }
+    else if (e.code === 'rate_limited') AI.err = 'Claude is busy or your usage limit was reached. Showing the built-in summary.';
+    else if (e.code !== 'cancelled') AI.err = 'Claude could not finish this time. Showing the built-in summary.';
+  } finally { AI.busy = false; renderNotes(); }
+}
+// Ask box
+const QA = [];
+function bindAsk(){
+  $('#ask-form').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const q = $('#ask-in').value.trim(); if (!q || !AI.fn) return;
+    $('#ask-in').value = '';
+    const item = document.createElement('div'); item.innerHTML = `<div class="q"></div><div class="a ai-out">Thinking…</div>`;
+    item.querySelector('.q').textContent = q; $('#qa').prepend(item);
+    const a = item.querySelector('.a');
+    QA.push({role:'user', content:q});
+    const rules = `You answer questions from a home V60 brewer (not an expert) about one bag of coffee and the science behind it. Be accurate and brief (under 120 words), plain English, use "tends to" where evidence is uncertain. Context:\n${bagFacts(M)}`;
+    try {
+      const {text} = await AI.fn([{role:'user', content:rules}, ...QA.slice(-6)], {cache:false, onText:({text}) => { a.innerHTML = md(text); }});
+      QA.push({role:'assistant', content:text});
+    } catch (e){
+      QA.pop();
+      a.textContent = e.code === 'rate_limited' ? 'Claude is busy or your usage limit was reached. Try again later.' : e.code === 'not_granted' ? 'Claude is not allowed for this page.' : (e.text || 'Claude could not answer this time.');
+    }
+  });
+}
+bindAsk();
+if (window.claude?.use){
+  window.claude.use('sample').then(fn => {
+    if (!fn) return;
+    AI.fn = fn; $('#ask-sec').hidden = false; renderNotes();
+    runAI(false);            // one write-up at load; cached for a day for the same bag
+  }).catch(() => {});
+}
+
 const labelOf = c => typeof c.label === 'function' ? c.label(M) : c.label;
 function selectCallout(id){ state.selected = state.selected === id ? null : id; renderReading(); liveCallouts.forEach(o => o.el.classList.toggle('active', o.c.id === state.selected)); }
 
@@ -689,7 +933,7 @@ function selectCallout(id){ state.selected = state.selected === id ? null : id; 
    ===================================================================== */
 function renderRecipe(){
   const r = M.recipe;
-  $('#recipe-for').textContent = `${state.altitude} MASL · ${M.P.name} · Agtron ${state.agtron}${state.varietals.size ? ' · ' + [...state.varietals].slice(0,3).join(' + ') : ''}`;
+  $('#recipe-for').textContent = `${state.origin} · ${state.altitude} MASL · ${M.P.name} · Agtron ${state.agtron}${state.varietals.size ? ' · ' + [...state.varietals].slice(0,3).join(' + ') : ''}`;
   const W = 280, H = 140, L = 30, R = 8, T = 14, B = 20, tMax = Math.max(180, Math.ceil(r.drain / 60) * 60), gMax = r.water * 1.08;
   const x = t => L + (t / tMax) * (W - L - R), y = g => T + (1 - g / gMax) * (H - T - B);
   let d = `M${x(0)},${y(0)}`, g = 0;
@@ -702,12 +946,14 @@ function renderRecipe(){
   r.pours.forEach(p => s += `<circle cx="${x(p.t + p.dur)}" cy="${y(p.to)}" r="2.8" fill="#7fe3ff"/><text x="${x(p.t + p.dur) - 4}" y="${y(p.to) - 6}" fill="#eef2fa" font-size="9.5" font-family="DM Mono, monospace" text-anchor="end">${p.to}</text>`);
   s += `<line x1="${x(r.drain)}" x2="${x(r.drain)}" y1="${y(g)}" y2="${y(0)}" stroke="#9ea8c2" stroke-dasharray="2 3"/>`;
   $('#recipe').innerHTML = `
+    <div class="field"><div class="field-head"><label class="label" for="grinder">Grinder</label><span class="readout">${r.grindFull}</span></div>
+      <select id="grinder">${GRINDERS.map(g => `<option value="${g.id}"${g.id === state.grinder ? ' selected' : ''}>${g.name}</option>`).join('')}</select></div>
     <div class="rstats">
       <div class="stat"><span class="k">Dose</span><span class="v dose"><button type="button" id="dose-dn" aria-label="Less coffee">−</button>${r.dose} g<button type="button" id="dose-up" aria-label="More coffee">+</button></span></div>
       <div class="stat"><span class="k">Water</span><span class="v">${r.water} g</span><span class="s">1:${r.ratio}</span></div>
       <div class="stat"><span class="k">Bloom</span><span class="v">${r.pours[0].to} g</span><span class="s">${r.bloomS} s</span></div>
       <div class="stat"><span class="k">Temp</span><span class="v">${r.tLo}–${r.tHi}°</span><span class="s">°C</span></div>
-      <div class="stat"><span class="k">Grind</span><span class="v">${r.clicks} clk</span><span class="s">Timemore C2S</span></div>
+      <div class="stat"><span class="k">Grind</span><span class="v">${r.clicks}</span><span class="s">${r.grinderName}</span></div>
       <div class="stat"><span class="k">Time</span><span class="v">~${fmtT(r.drain)}</span><span class="s">total</span></div>
       <div class="stat" style="grid-column:span 3"><span class="k">Method</span><span class="v wrap">${r.style} · ${r.agitate} agitation · grind ${r.grindWord.replace(' · ', ', ')}</span></div>
     </div>
@@ -717,7 +963,9 @@ function renderRecipe(){
         <li><span class="tm">~${fmtT(r.drain)}</span><span class="g">done</span><span class="d">Let it drain.</span></li></ol></div>
     <div><div class="sec-title"><span class="label">Why</span></div><ul class="why">${r.why.map(w => `<li>${w}</li>`).join('')}</ul></div>
     <div><div class="sec-title"><span class="label">If the cup tastes…</span></div>
+      <div class="hint">Grinder settings are typical starting points. Two units of the same model can differ by a few steps, so adjust by taste.</div>
       <div class="fix"><div><b>Sour, thin</b>Grind finer, go 1–2 °C hotter or swirl more.</div><div><b>Bitter, dry</b>Grind coarser, drop 2 °C or pour gentler.</div></div></div>`;
+  $('#grinder').addEventListener('change', e => { state.grinder = e.target.value; try { localStorage.setItem('bs-grinder', state.grinder); } catch (er) {} changed('grinder'); });
   $('#dose-dn').addEventListener('click', () => { state.dose = Math.max(10, state.dose - 1); changed('dose'); });
   $('#dose-up').addEventListener('click', () => { state.dose = Math.min(30, state.dose + 1); changed('dose'); });
 }
@@ -729,14 +977,14 @@ let toastTimer = 0;
 function showToast(kind, prev){
   const keys = [['CO₂','co2'],['Density','density'],['Porosity','porosity'],['Solubility','solubility'],['Fines risk','fines'],['Acidity','acidity'],['Sweetness','sweetness'],['Body','body']];
   const ds = keys.map(([n,k]) => ({n, a:prev[k], b:M[k]})).filter(d => Math.abs(d.b - d.a) > .02).sort((x,y) => Math.abs(y.b - y.a) - Math.abs(x.b - x.a)).slice(0, 3);
-  const what = kind === 'altitude' ? `Altitude ${state.altitude} m` : kind === 'process' ? M.P.name : kind === 'roast' ? `Agtron ${state.agtron}` : kind === 'varietal' ? 'Varietal mix' : kind === 'days' ? `Roasted ${state.days} days ago` : `Dose ${state.dose} g`;
+  const what = kind === 'altitude' ? `Altitude ${state.altitude} m` : kind === 'process' ? M.P.name : kind === 'roast' ? `Agtron ${state.agtron}` : kind === 'varietal' ? 'Varietal mix' : kind === 'days' ? `Roasted ${state.days} days ago` : kind === 'origin' ? `Origin: ${state.origin}` : kind === 'grinder' ? grinderOf(state.grinder).name : `Dose ${state.dose} g`;
   const r = M.recipe, pr = prev.recipe;
   const rec = [];
   if (r.tLo !== pr.tLo) rec.push(`<span class="delta">Temp <b class="${r.tLo > pr.tLo ? 'up' : 'dn'}">${r.tLo}–${r.tHi}°</b></span>`);
   if (r.ratio !== pr.ratio) rec.push(`<span class="delta">Ratio <b class="${r.ratio > pr.ratio ? 'up' : 'dn'}">1:${r.ratio}</b></span>`);
   if (r.pours.length !== pr.pours.length) rec.push(`<span class="delta">Pours <b class="${r.pours.length > pr.pours.length ? 'up' : 'dn'}">${r.pours.length - 1}</b></span>`);
   if (Math.abs(r.drain - pr.drain) >= 10) rec.push(`<span class="delta">Time <b class="${r.drain > pr.drain ? 'up' : 'dn'}">${fmtT(r.drain)}</b></span>`);
-  if (r.clicks !== pr.clicks) rec.push(`<span class="delta">Grind <b class="${r.clicks > pr.clicks ? 'up' : 'dn'}">${r.clicks} clk</b></span>`);
+  if (r.clicks !== pr.clicks) rec.push(`<span class="delta">Grind <b class="${r.grindIdx > pr.grindIdx ? 'up' : 'dn'}">${r.clicks}</b></span>`);
   const el = $('#toast');
   el.innerHTML = `<span class="what">${what}</span>` + ds.map(d => `<span class="delta">${d.n} ${pct(d.a)} → <b class="${d.b > d.a ? 'up' : 'dn'}">${pct(d.b)}</b></span>`).join('') + rec.join('');
   if (!ds.length && !rec.length && kind !== 'dose') return;
@@ -744,11 +992,11 @@ function showToast(kind, prev){
 }
 function changed(kind){
   const prev = M; M = model(state);
-  renderConsole(); renderReading(); renderRecipe();
+  renderConsole(); renderReading(); renderRecipe(); renderNotes();
   showToast(kind, prev);
   if (window.__apply3D) window.__apply3D(kind);
 }
-renderChips(); renderConsole(); renderReading(); renderRecipe();
+renderChips(); renderConsole(); renderReading(); renderRecipe(); renderNotes();
 
 /* =====================================================================
    3D SETUP
@@ -1549,7 +1797,7 @@ addEventListener('keydown', e => {
   if (e.target.matches('input, select, textarea')) return;
   if (e.key >= '1' && e.key <= '3') goTo(+e.key - 1);
   else if (e.key === 'r' || e.key === 'R') resetView();
-  else if (e.key === 'h' || e.key === 'H') setNotes($('.reading').hidden);
+  else if (e.key === 'h' || e.key === 'H') setNotes($('.notes').hidden);
   else if (e.key === 'v' || e.key === 'V') setRecipe($('.recipe').hidden);
   else if ((e.key === 'x' || e.key === 'X') && state.layer === 0) setCherryView(state.cherryView === 'stack' ? 'cut' : 'stack');
   else if (e.key === 'Escape' && state.selected) selectCallout(null);
@@ -1639,20 +1887,26 @@ function layout(){
   camera.aspect = W / H;
   const nav = $('.tabs').getBoundingClientRect();
   if (isBig()){
-    const side = $('.console').getBoundingClientRect(), rec = $('.recipe').getBoundingClientRect(), rd = $('.reading').getBoundingClientRect();
-    insets = {l:side.right - r.left, r:$('.recipe').hidden ? 0 : r.right - rec.left, t:nav.bottom - r.top, b:$('.reading').hidden ? 0 : r.bottom - rd.top};
+    const side = $('.console').getBoundingClientRect(), rec = $('.recipe').getBoundingClientRect(), nt = $('.notes');
+    nt.style.right = (!$('.recipe').hidden && !nt.hidden) ? (24 + 320 + 12) + 'px' : '24px';
+    const nr = nt.getBoundingClientRect();
+    const lefts = [!$('.recipe').hidden && rec.left, !nt.hidden && nr.left].filter(Boolean);
+    insets = {l:side.right - r.left, r:lefts.length ? r.right - Math.min(...lefts) : 0, t:nav.bottom - r.top, b:0};
   } else insets = {l:0, r:0, t:nav.bottom - r.top, b:0};
   const cx = (insets.l + (W - insets.r)) / 2, cy = (insets.t + (H - insets.b)) / 2;
   camera.setViewOffset(W, H, W/2 - cx, H/2 - cy, W, H); camera.updateProjectionMatrix();
   scalebarEl.style.left = (insets.l + 18) + 'px'; scalebarEl.style.top = (H - insets.b - 46) + 'px';
   keysEl.style.right = (insets.r + 18) + 'px'; keysEl.style.top = (H - insets.b - 46) + 'px';
-  const vt = $('#viewtoggle'); if (isBig()){ vt.style.left = (insets.l + 18) + 'px'; vt.style.top = '22px'; } else { vt.style.left = '12px'; vt.style.top = (H - 86) + 'px'; }
-  const sn = $('#show-notes'); sn.style.left = (cx - 50) + 'px'; sn.style.bottom = (isBig() ? 22 : 12) + 'px';
+  const vt = $('#viewtoggle'); if (isBig()){ vt.style.left = (insets.l + 18) + 'px'; vt.style.top = (insets.t + 12) + 'px'; } else { vt.style.left = '12px'; vt.style.top = (H - 86) + 'px'; }
+  $('.tabs').style.left = isBig() ? cx + 'px' : '';
+  if (isBig()) $('.show-group').style.right = (insets.r ? insets.r + 12 : 24) + 'px'; else $('.show-group').style.right = '';
   toastEl.style.left = cx + 'px'; toastEl.style.bottom = (insets.b + 14) + 'px';
 }
 new ResizeObserver(layout).observe(stage);
 window.__layout = layout;
-try { if (localStorage.getItem('bs-notes') === '0') setNotes(false); if (localStorage.getItem('bs-recipe') === '0') setRecipe(false); } catch (e) {}
+try { if (localStorage.getItem('bs-notes') === '0') $('.notes').hidden = true; if (localStorage.getItem('bs-recipe') === '0') $('.recipe').hidden = true; } catch (e) {}
+syncPanels();
+addEventListener('resize', syncPanels);
 addEventListener('resize', layout);
 
 let last = performance.now();
