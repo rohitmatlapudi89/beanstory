@@ -96,6 +96,10 @@ select option,select optgroup{background:#121829;color:var(--ink)}
 .tab:hover{color:#fff}
 .tab[aria-selected="true"]{background:#eef2fa;color:#0b0f1a;font-weight:600}
 .tab[aria-selected="true"] small{color:#5a647c}
+.viewtoggle{position:absolute;z-index:5;display:flex;gap:2px;padding:4px;border-radius:12px}
+.viewtoggle button{border:0;background:transparent;border-radius:8px;padding:5px 11px;font-size:12.5px;color:var(--soft);white-space:nowrap}
+.viewtoggle button:hover{color:#fff}
+.viewtoggle button[aria-pressed="true"]{background:#eef2fa;color:#0b0f1a;font-weight:600}
 
 /* ---------- callouts ---------- */
 #lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
@@ -212,9 +216,10 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
       <button class="tab" role="tab" data-layer="1" aria-selected="false">Bean<small>10 mm</small></button>
       <button class="tab" role="tab" data-layer="2" aria-selected="false">Chemistry<small>40 µm</small></button>
     </nav>
+    <div class="viewtoggle glass" id="viewtoggle" role="group" aria-label="Cherry view"><button type="button" data-v="stack" aria-pressed="true">Exploded</button><button type="button" data-v="cut" aria-pressed="false">Cut open</button></div>
     <div class="toast glass" id="toast" aria-live="polite"></div>
     <div class="scalebar" id="scalebar"><span id="scale-label">5 mm</span><div class="bar" id="scale-bar" style="width:80px"></div></div>
-    <div class="keys" id="keys">drag to orbit · scroll to zoom<br><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> layers · <kbd>R</kbd> reset</div>
+    <div class="keys" id="keys">drag to orbit · scroll to zoom<br><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> layers · <kbd>R</kbd> reset · <kbd>X</kbd> cherry view</div>
   </div>
 
   <div class="side">
@@ -353,7 +358,7 @@ const $ = (s, el=document) => el.querySelector(s);
 const clamp = (v,a=0,b=1) => Math.min(b, Math.max(a, v));
 const lerp = (a,b,t) => a + (b - a) * t;
 const pct = v => Math.round(v * 100);
-const state = {layer:0, altitude:1000, process:'cultured', agtron:65, varietals:new Set(['SL9','Chandragiri']), dose:15, selected:null};
+const state = {cherryView:'stack', layer:0, altitude:1000, process:'cultured', agtron:65, varietals:new Set(['SL9','Chandragiri']), dose:15, selected:null};
 
 function piece(pts, x){ if (x <= pts[0][0]) return pts[0][1]; for (let i = 1; i < pts.length; i++) if (x <= pts[i][0]){ const [x0,y0] = pts[i-1], [x1,y1] = pts[i]; return lerp(y0, y1, (x - x0) / (x1 - x0)); } return pts[pts.length-1][1]; }
 
@@ -394,7 +399,7 @@ function model(st){
     len: shape === 'long' ? 1.12 : shape === 'round' ? .95 : shape === 'robusta' ? .9 : 1,
     t: shape === 'round' ? .54 : shape === 'robusta' ? .56 : .5,
     flat: shape === 'robusta' ? .55 : .36,
-    cd: .07 + .07*density, cw: .11 - .055*density + .035*roastN, wig: shape === 'robusta' ? 0 : .012 + .075*density,
+    cd: .09 + .06*density, cw: .05 + .035*(1 - density) + .012*roastN, wig: shape === 'robusta' ? 0 : .012 + .075*density,
     point: shape === 'pointed' ? .45 : 0, scale: prim.size * expand,
   };
   const cell = {
@@ -528,19 +533,21 @@ const CALLOUTS = [
     {id:'fruit', label:'Added fruit', tag:'co-ferment', sw:SW.fruit, dx:-140, dy:40, when:M => cherryT.fruit > .3,
       text:M => 'Fruit added to the tank brings its own sugars and aroma compounds into the fermentation.'},
   ],
-  [ // bean
-    {id:'matrix', label:'Cell matrix', tag:'cellulose', sw:SW.wall, dx:-170, dy:20,
-      text:M => M.density > .6 ? 'Slow growth packed the cells tight: small cells, thick walls, few air pockets.' : 'Fast growth stretched the cells: bigger cells, thin walls, more air inside.'},
-    {id:'crust', label:'Surface', tag:'Maillard · caramel', sw:SW.crust, dx:-120, dy:-130, when:M => M.oil < .3,
+  [ // bean: whole bean on the left, cut half on the right
+    {id:'crease', label:'Centre line', tag:'crease', sw:SW.parchment, dx:-150, dy:-70,
+      text:M => M.density > .6 ? 'A tight, wavy, closed centre line: the signature of a slow-grown, high-altitude bean.' : 'A wider, straighter, more open crease from fast growth, with pale chaff caught inside.'},
+    {id:'crust', label:'Surface', tag:'Maillard · caramel', sw:SW.crust, dx:-150, dy:70, when:M => M.oil < .3,
       text:M => M.roastN < .3 ? 'Dropped soon after first crack: pale, dry and still tight.' : 'Browned by the Maillard reaction and caramelised sugars. Still dry.'},
-    {id:'oil', label:'Surface oil', tag:'dark roast', sw:SW.oil, dx:-120, dy:-130, when:M => M.oil >= .3,
+    {id:'oil', label:'Surface oil', tag:'dark roast', sw:SW.oil, dx:-150, dy:70, when:M => M.oil >= .3,
       text:M => 'Past second crack, pressure ruptures the cells and pushes oils out to the surface.'},
-    {id:'centercut', label:'Centre cut', tag:'chaff inside', sw:SW.parchment, dx:-160, dy:70,
-      text:M => M.density > .6 ? 'High-grown beans have a tight, wavy, closed centre line.' : 'Low-grown beans have a wider, straighter, more open centre cut.'},
-    {id:'pores', label:'Pores & CO₂', tag:'gas', sw:SW.co2, dx:160, dy:-70,
+    {id:'matrix', label:'Cell matrix', tag:'cellulose', sw:SW.wall, dx:160, dy:-90,
+      text:M => M.density > .6 ? 'Slow growth packed the cells tight: small cells, thick walls, few air pockets.' : 'Fast growth stretched the cells: bigger cells, thin walls, more air inside.'},
+    {id:'pores', label:'Pores & CO₂', tag:'gas', sw:SW.co2, dx:160, dy:-30,
       text:M => `Roasting turns water to steam and builds CO₂, puffing the cells open. Porosity here: <b>${pct(M.porosity)}</b>.`},
-    {id:'brittle', label:'Brittle zone', tag:'fines', sw:SW.flow, dx:170, dy:60,
+    {id:'brittle', label:'Brittle zone', tag:'fines', sw:SW.flow, dx:160, dy:30,
       text:M => `Thin or weakened walls shatter in the grinder into micro-dust that clogs paper. Fines risk: <b>${pct(M.fines)}</b>.`},
+    {id:'centercut', label:'Folded centre', tag:'inside', sw:SW.parchment, dx:160, dy:90,
+      text:M => 'Cut across, the bean shows it is a leaf of tissue folded on itself, with silverskin trapped in the fold.'},
   ],
   [ // cells
     {id:'wall', label:'Cell wall', tag:'insoluble', sw:SW.wall, dx:-160, dy:-70,
@@ -561,6 +568,7 @@ const CALLOUTS = [
       text:M => M.smoke > .4 ? 'At dark roasts the aroma turns smoky and roasty.' : 'Fruity volatile compounds that leave the bean almost instantly.'},
   ],
 ];
+function currentCallouts(){ return state.layer === 0 && state.cherryView === 'stack' ? CALLOUTS_STACK : CALLOUTS[state.layer]; }
 function topAcids(M){ return ACIDS.map(a => ({...a, v:M.acids[a.k]})).sort((a,b) => b.v - a.v).slice(0, 3); }
 
 const LAYER_META = [
@@ -588,7 +596,7 @@ function reading(M){
 }
 function renderReading(){
   const R = reading(M), meta = LAYER_META[state.layer];
-  const sel = state.selected && CALLOUTS[state.layer].find(c => c.id === state.selected);
+  const sel = state.selected && currentCallouts().find(c => c.id === state.selected);
   let html = `<div class="eyebrow"><span>${meta.eyebrow}${sel ? ' · ' + labelOf(sel) : ''}</span>${sel ? '<button type="button" id="back">← Overview</button>' : ''}</div>`;
   if (sel){
     html += `<h2>${labelOf(sel)}</h2><p class="lead">${sel.text(M)}</p>`;
@@ -732,7 +740,7 @@ function repaint(tex, draw){ const c = tex.image; draw(c.getContext('2d'), c.wid
 const SPRITE = canvasTex(64, (g, s) => { const gr = g.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2); gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(.35,'rgba(255,255,255,.45)'); gr.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0,0,s,s); });
 function normalFromHeight(hc, strength){
   const w = hc.width, h = hc.height, src = hc.getContext('2d').getImageData(0,0,w,h).data;
-  const out = makeCanvas(w), g = out.getContext('2d'), img = g.createImageData(w, h), d = img.data;
+  const out = makeCanvas(w); out.height = h; const g = out.getContext('2d'), img = g.createImageData(w, h), d = img.data;
   const Hh = (x,y) => src[(((y + h) % h) * w + ((x + w) % w)) * 4] / 255;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++){
     const dx = (Hh(x+1,y) - Hh(x-1,y)) * strength, dy = (Hh(x,y+1) - Hh(x,y-1)) * strength, l = Math.hypot(dx, dy, 1), i = (y*w + x) * 4;
@@ -765,7 +773,7 @@ const dust = (() => {
 const floorY = -1.3;
 const plate = new THREE.Group(); plate.position.y = floorY; scene.add(plate);
 {
-  const disc = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.7, .08, 128), new THREE.MeshPhysicalMaterial({color:0x101626, roughness:.28, metalness:.2, clearcoat:1, clearcoatRoughness:.15}));
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.7, .08, 128), new THREE.MeshPhysicalMaterial({color:0x0d1322, roughness:.3, metalness:.2, clearcoat:1, clearcoatRoughness:.15, envMapIntensity:.35}));
   disc.position.y = -.04; disc.receiveShadow = true; plate.add(disc);
   const ret = new THREE.Mesh(new THREE.CircleGeometry(3.55, 128), new THREE.MeshBasicMaterial({transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, map:canvasTex(1024, (g,s) => {
     const c = s/2; g.strokeStyle = 'rgba(127,227,255,.22)'; g.lineWidth = 1.5;
@@ -811,6 +819,13 @@ const mats = {
   beanCut: new THREE.MeshStandardMaterial({roughness:.7, envMapIntensity:.3}),
   stem: new THREE.MeshStandardMaterial({color:0x4d4224, roughness:.8}),
 };
+mats.skin.map = (() => {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512; const g = c.getContext('2d'), rnd = mulberry32(13);
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 40; i++){ const x = rnd()*1024, y = rnd()*512, r = 40 + rnd()*120, rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, rnd() < .5 ? 'rgba(255,190,190,.25)' : 'rgba(120,40,50,.18)'); rg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = rg; g.fillRect(x - r, y - r, r*2, r*2); }
+  for (let i = 0; i < 2600; i++){ g.fillStyle = `rgba(255,${210 + rnd()*40|0},${190 + rnd()*40|0},${.35 + rnd()*.4})`; g.beginPath(); g.arc(rnd()*1024, rnd()*512, .6 + rnd()*1.6, 0, 7); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 1); t.anisotropy = 8; return t;
+})();
 mats.cap.map = canvasTex(1024, (g, s) => {
   const c = s/2, R = s/2, gr = g.createRadialGradient(c,c,0,c,c,R);
   gr.addColorStop(0,'#f8ecd0'); gr.addColorStop(.78,'#f3d9a8'); gr.addColorStop(.9,'#f0b48e'); gr.addColorStop(.97,'#d8606a'); gr.addColorStop(1,'#a8202f');
@@ -1000,113 +1015,262 @@ const cherryAnchor = () => {
 };
 
 /* =====================================================================
-   LAYER 2: BEAN
+   LAYER 2: BEAN (photoreal: organic lumps, deep crease, fine pores)
    ===================================================================== */
 const bean = new THREE.Group(); scene.add(bean);
 const BP = {...M.bean}, BPt = {...M.bean};
+function hash3(i, j, k){ let h = Math.imul(i, 374761393) ^ Math.imul(j, 668265263) ^ Math.imul(k, 1440662683); h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967295; }
+function vnoise(x, y, z){
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z), xf = x - xi, yf = y - yi, zf = z - zi;
+  const u = xf*xf*(3 - 2*xf), v = yf*yf*(3 - 2*yf), w = zf*zf*(3 - 2*zf);
+  let s = 0;
+  for (let dx = 0; dx < 2; dx++) for (let dy = 0; dy < 2; dy++) for (let dz = 0; dz < 2; dz++)
+    s += hash3(xi + dx, yi + dy, zi + dz) * (dx ? u : 1 - u) * (dy ? v : 1 - v) * (dz ? w : 1 - w);
+  return s;
+}
+function fbm(x, y, z, o=3){ let a = .5, f = 1, s = 0, n = 0; for (let i = 0; i < o; i++){ s += a*vnoise(x*f, y*f, z*f); n += a; f *= 2.03; a *= .5; } return s / n; }
 function beanDeform(x, y, z, b){
   let X = x*b.w, Z = z*b.t; const Y = y*b.len;
   if (Z < 0) Z *= b.flat;
-  const w = clamp((-z + .15) / .35), x0 = b.wig*Math.sin(y*2.6), g = Math.exp(-Math.pow((X - x0) / b.cw, 2)), taper = clamp(1 - Math.pow(Math.abs(y), 3));
-  Z += b.cd*g*taper*w;
+  const w = clamp((-z + .15) / .35), x0 = b.wig*Math.sin(y*2.6), d = X - x0;
+  const g = Math.exp(-(d*d) / (b.cw*b.cw)), g2 = Math.exp(-(d*d) / (b.cw*b.cw*6)), taper = clamp(1 - Math.pow(Math.abs(y), 3));
+  Z += b.cd*g*taper*w - .03*(g2 - g)*taper*w;   // deep groove with raised lips
   Z -= .07*y*y;
   X *= 1 - .12*y*y - b.point*Math.pow(Math.abs(y), 1.6);
   Z *= 1 - b.point*.5*Math.pow(Math.abs(y), 2);
   return [X, Y, Z, g*taper*w];
 }
 function sectionPts(sign, b){ const pts = []; for (let i = 0; i < 240; i++){ const t = i/240*Math.PI*2; const [X,,Z] = beanDeform(Math.cos(t), 0, Math.sin(t), b); pts.push(new THREE.Vector2(X, -sign*Z)); } return pts; }
+const beanNormal = (() => {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512; const g = c.getContext('2d'), rnd = mulberry32(77);
+  g.fillStyle = '#808080'; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 14000; i++){ g.fillStyle = `rgba(${rnd() < .5 ? '40,40,40' : '220,220,220'},${.06 + rnd()*.18})`; g.beginPath(); g.arc(rnd()*1024, rnd()*512, .5 + rnd()*1.8, 0, 7); g.fill(); }
+  g.lineCap = 'round';
+  for (let i = 0; i < 700; i++){ const x = rnd()*1024, y = rnd()*512, a = (rnd() - .5)*.9 + (rnd() < .5 ? 0 : Math.PI/2), l = 6 + rnd()*30;
+    g.strokeStyle = `rgba(${rnd() < .6 ? '50,50,50' : '210,210,210'},${.12 + rnd()*.25})`; g.lineWidth = .6 + rnd()*1.4;
+    g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(a)*l/2 + (rnd()-.5)*6, y + Math.sin(a)*l/2 + (rnd()-.5)*6, x + Math.cos(a)*l, y + Math.sin(a)*l); g.stroke(); }
+  const t = normalFromHeight(c, 2.4); t.repeat.set(2, 1); return t;
+})();
+const beanMat = new THREE.MeshPhysicalMaterial({vertexColors:true, roughness:.55, normalMap:beanNormal, normalScale:new THREE.Vector2(.9, .9), sheen:.3, sheenRoughness:.6, sheenColor:new THREE.Color(0xffd2a0), clearcoat:.15, clearcoatRoughness:.5, envMapIntensity:.85});
+const greenMat = new THREE.MeshPhysicalMaterial({vertexColors:true, roughness:.62, normalMap:beanNormal, normalScale:new THREE.Vector2(1.2, 1.2), sheen:.5, sheenRoughness:.7, sheenColor:new THREE.Color(0xf2f6e4), envMapIntensity:.75});
+const oilMat = new THREE.MeshPhysicalMaterial({color:0x2a1408, roughness:.02, clearcoat:1, transmission:.4, thickness:.02, ior:1.47, envMapIntensity:1.6});
+function makeBean(kind, mat, seed){
+  const grp = new THREE.Group();
+  const geo = kind === 'whole' ? new THREE.SphereGeometry(1, 220, 150) : new THREE.SphereGeometry(1, 220, 80, 0, Math.PI*2, kind === 'top' ? 0 : Math.PI/2, Math.PI/2);
+  const base = geo.attributes.position.array.slice(), n = geo.attributes.position.count;
+  const lump = new Float32Array(n), fine = new Float32Array(n);
+  for (let i = 0; i < n; i++){ const x = base[i*3], y = base[i*3+1], z = base[i*3+2]; lump[i] = fbm(x*1.7 + seed, y*2.2, z*1.7, 3) - .5; fine[i] = fbm(x*11 + seed, y*11, z*11, 2) - .5; }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(n*3), 3));
+  const mesh = new THREE.Mesh(geo, mat); mesh.castShadow = mesh.receiveShadow = true; grp.add(mesh);
+  const o = {grp, mesh, base, lump, fine, kind};
+  if (mat === beanMat){
+    const rnd = mulberry32(Math.floor(seed*100)), idx = [];
+    for (let i = 0; i < 900 && idx.length < 110; i++){ const j = rnd()*n | 0; if (kind === 'whole' || base[j*3+2] > .15) idx.push(j); }
+    o.oil = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 12, 8), oilMat, idx.length); grp.add(o.oil);
+    o.idx = idx; o.sizes = idx.map(() => .5 + rnd());
+  }
+  return o;
+}
+function deformBean(o, b, colorFn){
+  const pos = o.mesh.geometry.attributes.position, col = o.mesh.geometry.attributes.color, half = o.kind !== 'whole';
+  for (let i = 0; i < pos.count; i++){
+    const x = o.base[i*3], y = o.base[i*3+1], z = o.base[i*3+2];
+    let [X, Y, Z, cr] = beanDeform(x, y, z, b);
+    const f = half ? clamp(Math.abs(y)*5) : 1, d = (o.lump[i]*.055 + o.fine[i]*.016) * f * (1 - cr*.7);
+    X += x*d; Z += z*d;
+    pos.setXYZ(i, X, Y, Z);
+    const c = colorFn(X, Y, Z, cr, o.lump[i], o.fine[i]); col.setXYZ(i, c.r, c.g, c.b);
+  }
+  pos.needsUpdate = col.needsUpdate = true; o.mesh.geometry.computeVertexNormals(); o.mesh.geometry.computeBoundingSphere();
+}
+function roastedColor(M){
+  const base = agtronColor(M.st.agtron), chaff = new THREE.Color(M.roastN > .6 ? '#6a4024' : '#e3cfa4'), out = new THREE.Color();
+  const mott = .12 + M.P.fruit*.1 + (M.P.id === 'wethulled' ? .18 : 0);
+  return (X, Y, Z, cr, l, f) => {
+    const tip = 1 - .22*Math.pow(clamp(Math.abs(Y) / (BP.len || 1)), 4);
+    out.copy(base).multiplyScalar(clamp((1 + l*.55 + f*mott*3.5) * tip, .5, 1.5));
+    out.multiplyScalar(1 - .45*clamp(cr*1.4));
+    return out.lerp(chaff, clamp((cr - .9)*10)*.75);
+  };
+}
+const greenColor = (() => {
+  const a = new THREE.Color('#84927a'), b2 = new THREE.Color('#aba981'), chaff = new THREE.Color('#ded8c0'), out = new THREE.Color();
+  return (X, Y, Z, cr, l, f) => out.copy(a).lerp(b2, clamp(.5 + l*1.8)).multiplyScalar((1 + f*.4)*(1 - .3*clamp(cr*1.4))).lerp(chaff, clamp((cr - .88)*9)*.8);
+})();
 function paintBeanCap(g, s, sign, b, M){
   const span = 1.8, outline = sectionPts(sign, b), P = (u,v) => [(u/span + .5)*s, (1 - (v/span + .5))*s];
   const path = () => { g.beginPath(); outline.forEach((p,i) => { const [x,y] = P(p.x,p.y); i ? g.lineTo(x,y) : g.moveTo(x,y); }); g.closePath(); };
-  const ag = M.st.agtron, inner = agtronColor(Math.min(95, ag + 14*(1 - M.roastN))).getStyle(), outer = agtronColor(ag - 4).getStyle();
-  g.clearRect(0,0,s,s); g.fillStyle = outer; g.fillRect(0,0,s,s);
+  const ag = M.st.agtron, innerC = agtronColor(Math.min(95, ag + 16*(1 - M.roastN))), outerC = agtronColor(ag - 3);
+  g.clearRect(0,0,s,s); g.fillStyle = outerC.getStyle(); g.fillRect(0,0,s,s);
   g.save(); path(); g.clip();
-  const [cx, cy] = P(0, sign*-.12), gr = g.createRadialGradient(cx, cy, 0, cx, cy, s*.42);
-  gr.addColorStop(0, inner); gr.addColorStop(.7, inner); gr.addColorStop(1, outer); g.fillStyle = gr; g.fillRect(0,0,s,s);
-  const rnd = mulberry32(sign > 0 ? 21 : 22), cell = 13 + (1 - M.density)*15, jit = k => ((Math.sin(k*12.9898)*43758.5453 % 1) + 1) % 1 * cell*.25;
-  g.strokeStyle = `rgba(40,20,8,${.3 + M.density*.25})`; g.lineWidth = .8 + M.cell.wall*28;
+  const [cx, cy] = P(0, sign*-.12), gr = g.createRadialGradient(cx, cy, 0, cx, cy, s*.4);
+  gr.addColorStop(0, innerC.getStyle()); gr.addColorStop(.65, innerC.clone().lerp(outerC, .3).getStyle()); gr.addColorStop(1, outerC.getStyle()); g.fillStyle = gr; g.fillRect(0,0,s,s);
+  const rnd = mulberry32(sign > 0 ? 21 : 22), tmp = new THREE.Color();
+  for (let i = 0; i < 3200; i++){ tmp.copy(innerC).lerp(outerC, rnd()).multiplyScalar(.85 + rnd()*.3); g.fillStyle = `rgba(${tmp.r*255|0},${tmp.g*255|0},${tmp.b*255|0},${.05 + rnd()*.1})`; g.beginPath(); g.arc(rnd()*s, rnd()*s, 2 + rnd()*9, 0, 7); g.fill(); }
+  // faint cell walls: visible as a fine net, tighter in dense beans
+  const cell = 9 + (1 - M.density)*11, jit = k => ((Math.sin(k*12.9898)*43758.5453 % 1) + 1) % 1 * cell*.35;
+  g.strokeStyle = `rgba(35,18,8,${.08 + M.density*.1})`; g.lineWidth = .5 + M.cell.wall*14;
   for (let r = -2; r < s/(cell*1.5) + 2; r++) for (let q = -2; q < s/(cell*1.732) + 2; q++){
     const x = q*cell*1.732 + (r & 1)*cell*.866, y = r*cell*1.5;
     g.beginPath();
-    for (let k = 0; k < 6; k++){ const a = Math.PI/6 + k*Math.PI/3, px = x + cell*Math.cos(a), py = y + cell*Math.sin(a), kx = px + jit(px*.37 + py*1.31), ky = py + jit(py*.91 - px*.53); k ? g.lineTo(kx,ky) : g.moveTo(kx,ky); }
+    for (let k = 0; k < 6; k++){ const a = Math.PI/6 + k*Math.PI/3, px = x + cell*Math.cos(a), py = y + cell*Math.sin(a); k ? g.lineTo(px + jit(px*.37 + py*1.31), py + jit(py*.91 - px*.53)) : g.moveTo(px + jit(px*.37 + py*1.31), py + jit(py*.91 - px*.53)); }
     g.closePath(); g.stroke();
-    if (rnd() < M.porosity*.55){ g.fillStyle = `rgba(20,10,4,${.3 + rnd()*.4})`; g.beginPath(); g.ellipse(x + (rnd()-.5)*cell*.4, y + (rnd()-.5)*cell*.4, cell*(.12 + rnd()*.25*M.porosity), cell*(.08 + rnd()*.15), rnd()*3, 0, Math.PI*2); g.fill(); }
   }
-  g.strokeStyle = 'rgba(15,8,3,.7)'; g.lineWidth = 1.6;
-  const nCr = Math.round(M.cell.rupture*40);
-  for (let i = 0; i < nCr; i++){ let x = rnd()*s, y = rnd()*s; g.beginPath(); g.moveTo(x,y); for (let j = 0; j < 5; j++){ x += (rnd()-.5)*40; y += (rnd()-.5)*40; g.lineTo(x,y); } g.stroke(); }
+  // pores: more and bigger in porous beans
+  const nP = Math.round(400 + M.porosity*2600);
+  for (let i = 0; i < nP; i++){ g.fillStyle = `rgba(18,8,3,${.25 + rnd()*.45})`; g.beginPath(); g.ellipse(rnd()*s, rnd()*s, .6 + rnd()*2.2*(.5 + M.porosity), .5 + rnd()*1.4, rnd()*3, 0, 7); g.fill(); }
+  g.strokeStyle = 'rgba(15,8,3,.55)'; g.lineWidth = 1.1;
+  for (let i = 0, n = Math.round(M.cell.rupture*50); i < n; i++){ let x = rnd()*s, y = rnd()*s; g.beginPath(); g.moveTo(x,y); for (let j = 0; j < 6; j++){ x += (rnd()-.5)*30; y += (rnd()-.5)*30; g.lineTo(x,y); } g.stroke(); }
+  // centre-cut fold
   const ff = [[0, .06],[.13, -.04],[-.01, -.22],[-.12, -.13]].map(([u,v]) => P(u*b.w/.72, sign*v*b.t/.5));
-  const chaff = M.roastN > .6 ? 'rgba(120,80,45,.9)' : 'rgba(236,216,176,.95)';
-  g.lineCap = 'round'; g.strokeStyle = 'rgba(30,15,6,.95)'; g.lineWidth = 12 + (1 - M.density)*6; g.beginPath(); g.moveTo(...ff[0]); g.bezierCurveTo(...ff[1], ...ff[2], ...ff[3]); g.stroke();
-  g.strokeStyle = chaff; g.lineWidth = 4; g.setLineDash([10,6]); g.beginPath(); g.moveTo(...ff[0]); g.bezierCurveTo(...ff[1], ...ff[2], ...ff[3]); g.stroke(); g.setLineDash([]);
-  if (M.oil > .2){ g.fillStyle = `rgba(255,200,120,${M.oil*.12})`; g.fillRect(0,0,s,s); }
+  g.lineCap = 'round'; g.strokeStyle = 'rgba(28,14,6,.9)'; g.lineWidth = 6 + (1 - M.density)*4; g.beginPath(); g.moveTo(...ff[0]); g.bezierCurveTo(...ff[1], ...ff[2], ...ff[3]); g.stroke();
+  g.strokeStyle = M.roastN > .6 ? 'rgba(130,88,50,.85)' : 'rgba(238,220,182,.9)'; g.lineWidth = 2.2; g.beginPath(); g.moveTo(...ff[0]); g.bezierCurveTo(...ff[1], ...ff[2], ...ff[3]); g.stroke();
+  if (M.oil > .2){ g.fillStyle = `rgba(255,200,120,${M.oil*.1})`; g.fillRect(0,0,s,s); }
   g.restore();
-  path(); g.strokeStyle = agtronColor(ag - 18).getStyle(); g.lineWidth = 10; g.stroke();
+  // crust band
+  path(); g.strokeStyle = agtronColor(ag - 16).getStyle(); g.globalAlpha = .7; g.lineWidth = 14; g.stroke(); g.globalAlpha = 1;
 }
-const beanMat = new THREE.MeshPhysicalMaterial({vertexColors:true, roughness:.6, clearcoat:.25, clearcoatRoughness:.5, envMapIntensity:.8});
-const oilMat = new THREE.MeshPhysicalMaterial({color:0x2a1408, roughness:.02, clearcoat:1, transmission:.4, thickness:.02, ior:1.47, envMapIntensity:1.6});
-function makeBeanHalf(top){
-  const grp = new THREE.Group();
-  const sg = new THREE.SphereGeometry(1, 180, 70, 0, Math.PI*2, top ? 0 : Math.PI/2, Math.PI/2);
-  const base = sg.attributes.position.array.slice();
-  sg.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(sg.attributes.position.count*3), 3));
-  const mesh = new THREE.Mesh(sg, beanMat); mesh.castShadow = true; mesh.receiveShadow = true; grp.add(mesh);
-  const sign = top ? -1 : 1;
-  const tex = canvasTex(1024, () => {}, {span:1.8});
-  const cap = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({map:tex, roughness:.85, envMapIntensity:.4}));
-  cap.position.y = top ? -.001 : .001; cap.receiveShadow = true; grp.add(cap);
-  const rnd = mulberry32(top ? 61 : 62), idx = [];
-  for (let i = 0; i < 600 && idx.length < 90; i++){ const j = rnd()*sg.attributes.position.count | 0; if (base[j*3+2] > .15) idx.push(j); }
-  const oil = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 12, 8), oilMat, idx.length); grp.add(oil);
-  return {grp, mesh, base, cap, tex, sign, top, oil, idx, sizes:idx.map(() => .5 + rnd())};
-}
-const halfA = makeBeanHalf(false), halfB = makeBeanHalf(true);
-const hingeA = new THREE.Group(), hingeB = new THREE.Group(), innerA = new THREE.Group(), innerB = new THREE.Group();
-[[hingeA, innerA, halfA],[hingeB, innerB, halfB]].forEach(([h, inn, half]) => { inn.rotation.z = -Math.PI/2; inn.add(half.grp); h.add(inn); bean.add(h); });
-bean.rotation.x = .12;
-const chaffC = new THREE.Color(), tmpC = new THREE.Color();
-function updateBeanGeometry(M){
-  const base = agtronColor(M.st.agtron);
-  chaffC.set(M.roastN > .6 ? '#6a4024' : '#e0cba0');
-  const mottle = .1 + M.P.fruit*.12 + (M.P.id === 'wethulled' ? .18 : 0);
-  [halfA, halfB].forEach(h => {
-    const pos = h.mesh.geometry.attributes.position, col = h.mesh.geometry.attributes.color;
-    for (let i = 0; i < pos.count; i++){
-      const [X,Y,Z,cr] = beanDeform(h.base[i*3], h.base[i*3+1], h.base[i*3+2], BP);
-      pos.setXYZ(i, X, Y, Z);
-      const n = 1 - mottle/2 + mottle*(Math.sin(X*31 + Y*17)*Math.sin(Y*23 - Z*29)*.5 + .5);
-      tmpC.copy(base).multiplyScalar(n).lerp(chaffC, clamp((cr - .55)*2.2)*.85);
-      col.setXYZ(i, tmpC.r, tmpC.g, tmpC.b);
-    }
-    pos.needsUpdate = col.needsUpdate = true; h.mesh.geometry.computeVertexNormals(); h.mesh.geometry.computeBoundingSphere();
-    const sg = new THREE.ShapeGeometry(new THREE.Shape(sectionPts(h.sign, BP)));
-    sg.rotateX(h.top ? Math.PI/2 : -Math.PI/2);
-    h.cap.geometry.dispose(); h.cap.geometry = sg;
-    const nrm = h.mesh.geometry.attributes.normal;
-    h.idx.forEach((j, i) => {
-      _o.position.set(pos.getX(j) + nrm.getX(j)*.005, pos.getY(j) + nrm.getY(j)*.005, pos.getZ(j) + nrm.getZ(j)*.005);
-      const sz = M.oil*.028*h.sizes[i]*(i / h.idx.length < M.oil ? 1 : 0);
-      _o.lookAt(_o.position.clone().add(V3(nrm.getX(j), nrm.getY(j), nrm.getZ(j)))); _o.scale.set(sz, sz, sz*.35); _o.updateMatrix(); h.oil.setMatrixAt(i, _o.matrix);
-    });
-    h.oil.instanceMatrix.needsUpdate = true; h.oil.visible = M.oil > .02;
+const halfA = makeBean('bottom', beanMat, 3.1), wholeB = makeBean('whole', beanMat, 7.7);
+halfA.tex = canvasTex(1024, () => {}, {span:1.8});
+halfA.cap = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshPhysicalMaterial({map:halfA.tex, roughness:.8, sheen:.2, sheenColor:new THREE.Color(0xffe0c0), envMapIntensity:.5}));
+halfA.cap.position.y = .001; halfA.cap.receiveShadow = true; halfA.grp.add(halfA.cap);
+const hingeA = new THREE.Group(), innerA = new THREE.Group(), hingeW = new THREE.Group(), innerW = new THREE.Group();
+[[hingeA, innerA, halfA],[hingeW, innerW, wholeB]].forEach(([h, inn, o]) => { inn.rotation.z = -Math.PI/2; inn.add(o.grp); h.add(inn); bean.add(h); });
+bean.rotation.x = .1;
+function placeOil(o, M){
+  const pos = o.mesh.geometry.attributes.position, nrm = o.mesh.geometry.attributes.normal;
+  o.idx.forEach((j, i) => {
+    _o.position.set(pos.getX(j) + nrm.getX(j)*.004, pos.getY(j) + nrm.getY(j)*.004, pos.getZ(j) + nrm.getZ(j)*.004);
+    const sz = M.oil*.026*o.sizes[i]*(i / o.idx.length < M.oil ? 1 : 0);
+    _o.lookAt(_o.position.clone().add(V3(nrm.getX(j), nrm.getY(j), nrm.getZ(j)))); _o.scale.set(sz, sz, sz*.35); _o.updateMatrix(); o.oil.setMatrixAt(i, _o.matrix);
   });
-  innerA.scale.setScalar(BP.scale); innerB.scale.setScalar(BP.scale);
-  beanMat.roughness = .62 - M.oil*.45; beanMat.clearcoat = .2 + M.oil*.8; beanMat.clearcoatRoughness = .5 - M.oil*.4;
+  o.oil.instanceMatrix.needsUpdate = true; o.oil.visible = M.oil > .02;
 }
-function updateBeanTextures(M){ [halfA, halfB].forEach(h => repaint(h.tex, (g, s) => paintBeanCap(g, s, h.sign, BP, M))); }
+function updateBeanGeometry(M){
+  const rc = roastedColor(M);
+  deformBean(halfA, BP, rc); deformBean(wholeB, BP, rc);
+  const sg = new THREE.ShapeGeometry(new THREE.Shape(sectionPts(1, BP))); sg.rotateX(-Math.PI/2);
+  halfA.cap.geometry.dispose(); halfA.cap.geometry = sg;
+  placeOil(halfA, M); placeOil(wholeB, M);
+  innerA.scale.setScalar(BP.scale); innerW.scale.setScalar(BP.scale);
+  beanMat.roughness = .55 - M.oil*.42; beanMat.clearcoat = .15 + M.oil*.85; beanMat.clearcoatRoughness = .5 - M.oil*.4; beanMat.sheen = .3*(1 - M.oil);
+}
+function updateBeanTextures(M){ repaint(halfA.tex, (g, s) => paintBeanCap(g, s, 1, BP, M)); }
 function beanExplode(e){
-  const sep = .32*BP.scale;
-  hingeA.position.x = -sep*e; hingeB.position.x = sep*e;
-  hingeA.rotation.y = -1.02*e; hingeB.rotation.y = 1.02*e;
-  hingeA.position.z = hingeB.position.z = -.25*e;
+  hingeA.position.set(1.1*BP.scale, 0, -.1); hingeA.rotation.y = -1.2*e;
+  hingeW.position.set(-.95*BP.scale, .05, -.2); hingeW.rotation.set(-.32*e, Math.PI*e, -.5*e);
 }
+const unitDir = (x, y, z) => { const l = Math.hypot(x, y, z); return [x/l, y/l, z/l]; };
 const beanAnchor = () => {
-  const [cx,,cz] = beanDeform(0, -Math.cos(.9), Math.sin(.9), BP), cy = -Math.cos(.9)*BP.len;
+  const s = (o, v) => [o.grp, v];
+  const cr = beanDeform(...unitDir(BP.wig*Math.sin(.35*2.6)/BP.w, .35, -.94), BP), cu = beanDeform(...unitDir(.6, -.5, -.62), BP);
   return {
-    matrix:[halfA, V3(-.38*BP.w/.72, .002, .12)], crust:[halfA, V3(cx, cy, cz)], oil:[halfA, V3(cx, cy, cz)],
-    centercut:[halfA, V3(-.02, .002, -.18*BP.t/.5)], pores:[halfB, V3(.3*BP.w/.72, -.002, .18)], brittle:[halfB, V3(-.3*BP.w/.72, -.002, -.02)],
+    matrix:s(halfA, V3(-.34*BP.w/.72, .002, .16)), pores:s(halfA, V3(.32*BP.w/.72, .002, .2)), brittle:s(halfA, V3(.42*BP.w/.72, .002, -.02)),
+    centercut:s(halfA, V3(-.02, .002, -.12*BP.t/.5)),
+    crease:s(wholeB, V3(cr[0], cr[1], cr[2])), crust:s(wholeB, V3(cu[0], cu[1], cu[2])), oil:s(wholeB, V3(cu[0], cu[1], cu[2])),
   };
 };
+
+/* =====================================================================
+   LAYER 1b: CHERRY, EXPLODED STACK (like a studio product render)
+   ===================================================================== */
+const stack = new THREE.Group(); scene.add(stack);
+stack.scale.setScalar(.6); stack.position.y = .3;
+function displace(geo, amp, freq, seed, fn){
+  geo.computeVertexNormals(); const p = geo.attributes.position, n = geo.attributes.normal;
+  for (let i = 0; i < p.count; i++){ const x = p.getX(i), y = p.getY(i), z = p.getZ(i), d = (fbm(x*freq + seed, y*freq, z*freq, 3) - .5)*amp*(fn ? fn(x, y, z) : 1); p.setXYZ(i, x + n.getX(i)*d, y + n.getY(i)*d, z + n.getZ(i)*d); }
+  geo.computeVertexNormals(); return geo;
+}
+const fiberNormal = (() => {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 256; const g = c.getContext('2d'), rnd = mulberry32(88);
+  g.fillStyle = '#808080'; g.fillRect(0, 0, 1024, 256);
+  for (let i = 0; i < 1400; i++){ const x = rnd()*1024; g.strokeStyle = `rgba(${rnd() < .5 ? '40,40,40' : '225,225,225'},${.12 + rnd()*.25})`; g.lineWidth = .8 + rnd()*2.5;
+    g.beginPath(); g.moveTo(x, -5); g.bezierCurveTo(x + (rnd()-.5)*20, 80, x + (rnd()-.5)*20, 170, x + (rnd()-.5)*14, 261); g.stroke(); }
+  for (let i = 0; i < 900; i++){ g.fillStyle = `rgba(${rnd() < .5 ? '60,60,60' : '210,210,210'},${.1 + rnd()*.2})`; g.beginPath(); g.ellipse(rnd()*1024, rnd()*256, 1 + rnd()*4, 3 + rnd()*9, 0, 0, 7); g.fill(); }
+  const t = normalFromHeight(c, 3); t.repeat.set(3, 1); return t;
+})();
+const veinNormal = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d'), rnd = mulberry32(99);
+  g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 260; i++){ const x = rnd()*512, y = rnd()*512, r = 10 + rnd()*40;
+    const rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, rnd() < .5 ? 'rgba(30,30,30,.25)' : 'rgba(230,230,230,.25)'); rg.addColorStop(1, 'rgba(128,128,128,0)'); g.fillStyle = rg; g.fillRect(x - r, y - r, r*2, r*2); }
+  g.lineCap = 'round';
+  for (let i = 0; i < 70; i++){ let x = rnd()*512, y = rnd()*512, a = rnd()*Math.PI*2; g.strokeStyle = `rgba(${rnd() < .5 ? '50,50,50' : '215,215,215'},${.3 + rnd()*.3})`; g.lineWidth = .6 + rnd()*1.6;
+    g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 14; j++){ a += (rnd()-.5)*.7; x += Math.cos(a)*12; y += Math.sin(a)*12; g.lineTo(x, y); } g.stroke(); }
+  const t = normalFromHeight(c, 2.5); return t;
+})();
+const pulpFresh = new THREE.Color('#e2541c'), pulpDried = new THREE.Color('#6e2c14');
+const stackMats = {
+  flesh: new THREE.MeshPhysicalMaterial({color:0xd34a3e, roughness:.4, clearcoat:.7, clearcoatRoughness:.25, sheen:.4, sheenColor:new THREE.Color(0xffa090), normalMap:fiberNormal, normalScale:new THREE.Vector2(.4, .4), side:THREE.BackSide, envMapIntensity:.8}),
+  cutFace: new THREE.MeshPhysicalMaterial({color:0xe2705e, roughness:.45, clearcoat:.6, normalMap:fiberNormal, normalScale:new THREE.Vector2(.3, .3), envMapIntensity:.7}),
+  pulp: new THREE.MeshPhysicalMaterial({color:pulpFresh.clone(), roughness:.3, clearcoat:1, clearcoatRoughness:.12, transmission:.25, thickness:.5, attenuationColor:new THREE.Color(0xff3a00), attenuationDistance:.6, sheen:.5, sheenColor:new THREE.Color(0xffb27a), normalMap:fiberNormal, normalScale:new THREE.Vector2(.9, .9), envMapIntensity:1}),
+  muc: new THREE.MeshPhysicalMaterial({color:0xffffff, roughness:.04, transmission:1, thickness:.2, specularIntensity:1, ior:1.36, clearcoat:1, attenuationColor:new THREE.Color(0xfff2d8), attenuationDistance:2, envMapIntensity:1.5}),
+  parch: new THREE.MeshPhysicalMaterial({color:0xd2bb92, roughness:.82, sheen:.6, sheenRoughness:.8, sheenColor:new THREE.Color(0xfff2d8), normalMap:veinNormal, normalScale:new THREE.Vector2(1.1, 1.1), side:THREE.DoubleSide, envMapIntensity:.75}),
+  silver: new THREE.MeshPhysicalMaterial({color:0xf2ede2, roughness:.4, transmission:.6, thickness:.02, transparent:true, opacity:.82, sheen:.7, sheenColor:new THREE.Color(0xffffff), normalMap:veinNormal, normalScale:new THREE.Vector2(.6, .6), side:THREE.DoubleSide, depthWrite:false, envMapIntensity:1}),
+};
+function skinColors(geo){ const p = geo.attributes.position, col = []; for (let i = 0; i < p.count; i++){ const x = p.getX(i), y = p.getY(i), z = p.getZ(i), n = Math.sin(x*7.1 + y*3.3)*Math.sin(z*6.3 - y*5.1)*.5 + .5, v = 1 - clamp((y - .35)*1.1)*.4 + n*.15; col.push(v, v, v); } geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); return geo; }
+const EX = {skin:2.25, pulp:1.52, muc:.95, parch:.38, silver:-.12, bean:-.64, cup:-1.38};
+const SL = {};
+const greenBean = makeBean('whole', greenMat, 5.5);
+(() => {
+  const add = (key, obj, r) => { stack.add(obj); SL[key] = {obj, r}; obj.traverse(o => { if (o.isMesh){ o.castShadow = true; o.receiveShadow = true; } }); };
+  // skin cap
+  const cap = new THREE.Group();
+  const dome = new THREE.Mesh(skinColors(new THREE.SphereGeometry(1, 160, 80, 0, Math.PI*2, 0, Math.PI/2)), mats.skin); dome.scale.y = .78;
+  const under = new THREE.Mesh(new THREE.CircleGeometry(.995, 128), stackMats.cutFace); under.rotation.x = Math.PI/2;
+  const nub = new THREE.Mesh(new THREE.CylinderGeometry(.04, .07, .12, 16), mats.stem); nub.position.y = .8;
+  cap.add(dome, under, nub); add('skin', cap, 1);
+  // pulp ring
+  const prof = []; for (let i = 0; i <= 72; i++){ const t = i/72*Math.PI*2, c = Math.cos(t), s = Math.sin(t); prof.push(new THREE.Vector2(.64 + .31*Math.sign(c)*Math.pow(Math.abs(c), .55), .21*Math.sign(s)*Math.pow(Math.abs(s), .6))); }
+  add('pulp', new THREE.Mesh(displace(new THREE.LatheGeometry(prof, 180), .09, 3.4, 1.3), stackMats.pulp), .95);
+  // mucilage lens with a wavy, drooping rim
+  const mp = []; for (let i = 0; i <= 64; i++){ const a = i/64*Math.PI, r = .86*Math.sin(a); mp.push(new THREE.Vector2(Math.max(.0001, r), a < Math.PI/2 ? .15*Math.cos(a) : .06*Math.cos(a))); }
+  const mg = new THREE.LatheGeometry(mp, 180);
+  { const p = mg.attributes.position; for (let i = 0; i < p.count; i++){ const x = p.getX(i), y = p.getY(i), z = p.getZ(i), r = Math.hypot(x, z), a = Math.atan2(z, x);
+      p.setY(i, y - Math.pow(r/.86, 3)*(.05 + .07*Math.sin(a*5 + 1.3)*Math.sin(a*3)) ); } }
+  add('muc', new THREE.Mesh(displace(mg, .06, 2.6, 4.2), stackMats.muc), .9);
+  // parchment: crinkled papery bowl
+  const pg = new THREE.SphereGeometry(1, 160, 70, 0, Math.PI*2, Math.PI*.4, Math.PI*.6); pg.scale(1, .38, .72); pg.translate(0, .14, 0);
+  add('parch', new THREE.Mesh(displace(displace(pg, .09, 3.8, 2.2), .035, 11, 6.1), stackMats.parch), 1);
+  // silverskin: thin veined film
+  const sg = new THREE.RingGeometry(0, 1, 120, 30); sg.rotateX(-Math.PI/2); sg.scale(.95, 1, .6);
+  { const p = sg.attributes.position; for (let i = 0; i < p.count; i++){ const x = p.getX(i), z = p.getZ(i), r = Math.hypot(x/.95, z/.6); p.setY(i, .05*Math.sin(x*3.2 + z*2) + (fbm(x*2.5, 0, z*2.5, 3) - .5)*.16 + .1*r*r*r); } sg.computeVertexNormals(); }
+  add('silver', new THREE.Mesh(sg, stackMats.silver), .95);
+  // green bean, crease up
+  const gb = new THREE.Group(), gi = new THREE.Group(); gi.rotation.x = Math.PI/2; gi.add(greenBean.grp); gb.add(gi); gb.rotation.y = Math.PI/2;
+  add('bean', gb, .9);
+  // skin cup
+  const cup = new THREE.Group();
+  const outer = new THREE.Mesh(skinColors(new THREE.SphereGeometry(1, 160, 80, 0, Math.PI*2, Math.PI/2, Math.PI/2)), mats.skin); outer.scale.y = .72;
+  const inner = new THREE.Mesh(new THREE.SphereGeometry(1, 160, 80, 0, Math.PI*2, Math.PI/2, Math.PI/2), stackMats.flesh); inner.scale.set(.955, .69, .955);
+  const lip = new THREE.Mesh(new THREE.RingGeometry(.955, 1, 160), stackMats.cutFace); lip.rotation.x = -Math.PI/2;
+  cup.add(outer, inner, lip); add('cup', cup, 1);
+})();
+const stackT = {fruit:1};
+function updateStack(dt, t, e){
+  const c = cherryC;
+  for (const k in SL) SL[k].obj.position.y = lerp(EX[k]*.3, EX[k], e);
+  stack.rotation.y = .5 + t*.12;
+  setOpacity(stackMats.pulp, c.skin); setOpacity(stackMats.flesh, c.skin); setOpacity(stackMats.cutFace, c.skin);
+  SL.skin.obj.visible = SL.pulp.obj.visible = SL.cup.obj.visible = c.skin > .03;
+  stackMats.pulp.color.lerpColors(pulpFresh, pulpDried, c.wrinkle); stackMats.pulp.transmission = .25*(1 - c.wrinkle); stackMats.pulp.roughness = .3 + c.wrinkle*.4;
+  const fs = 1 - c.wrinkle*.12; SL.skin.obj.scale.setScalar(fs); SL.cup.obj.scale.setScalar(fs); SL.pulp.obj.scale.set(fs, fs*(1 - c.wrinkle*.3), fs);
+  SL.muc.obj.visible = c.muc > .03; SL.muc.obj.scale.set(1, .3 + c.mucLevel*.55, 1);
+  stackMats.muc.attenuationColor.copy(cherryCol.muc); stackMats.muc.attenuationDistance = lerp(3, .35, clamp(c.mucLevel - .3));
+  setOpacity(stackMats.parch, clamp(c.parch)); SL.parch.obj.visible = c.parch > .03; stackMats.parch.clearcoat = c.wet; stackMats.parch.roughness = .82 - c.wet*.5;
+  greenMat.color.copy(cherryCol.bean);
+}
+let greenDirty = true;
+const stackCallout = (id, label, tag, sw, src, when) => ({id, label, tag, sw, dx:150, dy:0, when, text:M => CALLOUTS[0].find(c => c.id === src).text(M)});
+const CALLOUTS_STACK = [
+  stackCallout('s_skin', () => cherryT.skin < .5 ? 'Skin · removed' : 'Skin', 'exocarp', SW.skin, 'skin'),
+  stackCallout('s_pulp', () => cherryT.skin < .5 ? 'Pulp · removed' : 'Pulp', 'mesocarp', SW.pulp, 'pulp', () => cherryT.skin > .2),
+  stackCallout('s_muc', 'Mucilage', 'sugars · pectin', SW.mucilage, 'mucilage', () => cherryT.muc > .2),
+  stackCallout('s_parch', 'Parchment', 'endocarp', SW.parchment, 'parchment', () => cherryT.parch > .5),
+  {id:'s_silver', label:'Silverskin', tag:'spermoderm', sw:'#e8e4da', dx:150, dy:0, text:M => 'A thin, veined film right on the bean. Most of it flakes off as chaff in the roaster. Some stays caught in the crease.'},
+  stackCallout('s_bean', 'Green bean', 'endosperm', SW.bean, 'bean'),
+  {id:'s_cup', label:'Skin', tag:'other half', sw:SW.skin, dx:150, dy:0, when:() => cherryT.skin > .5, text:M => 'The other half of the cherry. Most cherries hold two beans, flat sides facing.'},
+];
 
 /* =====================================================================
    LAYER 3: CELLS
@@ -1199,13 +1363,14 @@ window.__apply3D = () => {
   cherryTargets(M);
   const k = clamp(M.prim.size, .9, 1.15);
   if (Math.abs(k - cherryParts.k) > .001){ const e = cherryParts.front.half.position.x / 1.75; buildCherry(k); cherryParts.back.half.add(microbes.p, flows.p); cherryExplode(e); }
-  beanDirty = texDirty = cellsDirty = true;
+  beanDirty = texDirty = cellsDirty = greenDirty = true;
   refreshCallouts();
 };
 function step3D(now, dt){
   let moving = false;
   for (const k in BPt){ const d = BPt[k] - BP[k]; if (Math.abs(d) > 1e-4){ BP[k] += d*(1 - Math.pow(.004, dt)); moving = true; } else BP[k] = BPt[k]; }
   if (state.layer === 1 && (moving || beanDirty)){ updateBeanGeometry(M); beanDirty = false; }
+  if (state.layer === 0 && state.cherryView === 'stack' && (moving || greenDirty)){ deformBean(greenBean, BP, greenColor); greenBean.grp.scale.setScalar(clamp(M.prim.size, .85, 1.25)); greenDirty = false; }
   if (state.layer === 1 && texDirty && now - lastTex > 120){ updateBeanTextures(M); lastTex = now; texDirty = moving; }
   if (state.layer === 2 && cellsDirty && now - lastCells > 110){ buildCells(M); lastCells = now; cellsDirty = false; buildCallouts(); }
 }
@@ -1213,25 +1378,42 @@ function step3D(now, dt){
 /* =====================================================================
    CAMERA DIVE BETWEEN LAYERS
    ===================================================================== */
-const groups = [cherry, bean, cells];
 const REST = [
   {pos:V3(.75, .85, 7.6), target:V3(.6, .2, -.3), min:2.2, max:11},
-  {pos:V3(0, .55, 4.8), target:V3(0, 0, -.15), min:1.6, max:9},
+  {pos:V3(0, 1, 8.6), target:V3(0, 0, -.2), min:1.6, max:13},
   {pos:V3(0, 6.6, 7.6), target:V3(0, -1, .35), min:2, max:15},
 ];
+const REST_STACK = {pos:V3(0, 4.4, 8.6), target:V3(0, .25, 0), min:3, max:14};
+const restFor = n => n === 0 && state.cherryView === 'stack' ? REST_STACK : REST[n];
+function applyVisibility(){
+  const n = state.layer, cut = state.cherryView === 'cut';
+  cherry.visible = n === 0 && cut; fx.visible = n === 0 && cut; stack.visible = n === 0 && !cut;
+  bean.visible = n === 1; cells.visible = n === 2;
+  $('#viewtoggle').hidden = n !== 0;
+}
+function setCherryView(v){
+  if (v === state.cherryView) return;
+  state.cherryView = v;
+  document.querySelectorAll('#viewtoggle button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === v));
+  if (state.layer !== 0) return;
+  applyVisibility(); state.selected = null; buildCallouts(); renderReading(); arrivalT = performance.now();
+  if (v === 'cut') cherryExplode(0);
+  const R = restFor(0); controls.minDistance = R.min; controls.maxDistance = R.max; resetView();
+}
+document.querySelectorAll('#viewtoggle button').forEach(b => b.addEventListener('click', () => setCherryView(b.dataset.v)));
 function divePoint(layer){
-  if (layer === 0) return cherry.localToWorld(V3(.28, 0, .05));
+  if (layer === 0) return state.cherryView === 'stack' ? SL.bean.obj.getWorldPosition(V3()) : cherry.localToWorld(V3(.28, 0, .05));
   if (layer === 1) return halfA.grp.localToWorld(V3(-.1, 0, .1));
   return V3(0, floorY + .4, 0);
 }
 let arrivalT = 0;
 function showLayer(n){
-  groups.forEach((g, i) => g.visible = i === n);
-  fx.visible = n === 0;
-  shadowCatch.visible = n !== 2;
   state.layer = n; state.selected = null;
+  applyVisibility();
+  shadowCatch.visible = n !== 2;
+  scene.environmentIntensity = n === 2 ? .55 : .8; key.intensity = n === 2 ? 2.6 : 2.2;
   document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', +b.dataset.layer === n));
-  const R = REST[n]; controls.minDistance = R.min; controls.maxDistance = R.max;
+  const R = restFor(n); controls.minDistance = R.min; controls.maxDistance = R.max;
   if (n === 1){ beanDirty = texDirty = true; lastTex = 0; }
   if (n === 2 && (cellsDirty || !cellState.group)){ buildCells(M); cellsDirty = false; }
   buildCallouts(); renderReading();
@@ -1246,7 +1428,7 @@ function goTo(n){
   controls.enabled = false; hideCallouts();
 }
 function resetView(instant){
-  const R = REST[state.layer];
+  const R = restFor(state.layer);
   if (instant || reduceMotion){ camera.position.copy(R.pos); controls.target.copy(R.target); controls.update(); return; }
   trans = {t0:performance.now(), phase:2, p0:camera.position.clone(), q0:controls.target.clone()};
 }
@@ -1260,18 +1442,18 @@ function stepTransition(now){
     veil.style.opacity = k; canvas.style.filter = `blur(${(k*10).toFixed(1)}px)`;
     if (t >= 1){
       showLayer(trans.to); if (trans.to === 0) cherryExplode(0); if (trans.to === 1) beanExplode(0);
-      const R = REST[trans.to], dp2 = divePoint(trans.to);
+      const R = restFor(trans.to), dp2 = divePoint(trans.to);
       trans.phase = 1; trans.t0 = now;
       if (trans.dir > 0){ trans.p0 = R.target.clone().add(R.pos.clone().sub(R.target).multiplyScalar(2.6)); trans.q0 = R.target.clone(); }
       else { trans.p0 = dp2.clone().add(R.pos.clone().sub(dp2).setLength(.15)); trans.q0 = dp2.clone(); }
     }
   } else if (trans.phase === 1){
-    const t = clamp((now - trans.t0) / 1150), k = easeOut(t), R = REST[trans.to];
+    const t = clamp((now - trans.t0) / 1150), k = easeOut(t), R = restFor(trans.to);
     camera.position.lerpVectors(trans.p0, R.pos, k); controls.target.lerpVectors(trans.q0, R.target, k);
     veil.style.opacity = 1 - easeOut(clamp(t*1.4)); canvas.style.filter = `blur(${((1 - easeOut(clamp(t*1.6)))*10).toFixed(1)}px)`;
     if (t >= 1){ veil.style.opacity = 0; canvas.style.filter = ''; trans = null; controls.enabled = true; if (pending !== null){ const p = pending; pending = null; goTo(p); } }
   } else {
-    const t = clamp((now - trans.t0) / 900), k = ease(t), R = REST[state.layer];
+    const t = clamp((now - trans.t0) / 900), k = ease(t), R = restFor(state.layer);
     camera.position.lerpVectors(trans.p0, R.pos, k); controls.target.lerpVectors(trans.q0, R.target, k);
     if (t >= 1){ trans = null; controls.enabled = true; }
   }
@@ -1281,6 +1463,7 @@ addEventListener('keydown', e => {
   if (e.target.matches('input, select, textarea')) return;
   if (e.key >= '1' && e.key <= '3') goTo(+e.key - 1);
   else if (e.key === 'r' || e.key === 'R') resetView();
+  else if ((e.key === 'x' || e.key === 'X') && state.layer === 0) setCherryView(state.cherryView === 'stack' ? 'cut' : 'stack');
   else if (e.key === 'Escape' && state.selected) selectCallout(null);
 });
 
@@ -1290,15 +1473,20 @@ addEventListener('keydown', e => {
 const calloutsEl = $('#callouts'), linesEl = $('#lines');
 let liveCallouts = [], calloutKey = '';
 function anchorWorld(layer, id){
+  if (layer === 0 && state.cherryView === 'stack'){
+    const L = SL[id.slice(2)]; if (!L || !L.obj.visible) return null;
+    const right = V3(1, 0, 0).applyQuaternion(camera.quaternion);
+    return L.obj.getWorldPosition(V3()).add(right.multiplyScalar(L.r*stack.scale.x*.92));
+  }
   if (layer === 0){
     if (id === 'bubbles') return V3(-1.45, .4, .2);
     if (id === 'fruit') return fruit.children[0].getWorldPosition(V3());
     return cherryParts.back.half.localToWorld(cherryAnchor()[id].clone());
   }
-  if (layer === 1){ const [h, v] = beanAnchor()[id]; return h.grp.localToWorld(v.clone()); }
+  if (layer === 1){ const [g, v] = beanAnchor()[id]; return g.localToWorld(v.clone()); }
   const a = cellState.data && cellState.data.anchors[id]; return a ? cells.localToWorld(a.clone()) : null;
 }
-function activeCallouts(){ return CALLOUTS[state.layer].filter(c => !c.when || c.when(M)).filter(c => state.layer !== 2 || (cellState.data && cellState.data.anchors[c.id])); }
+function activeCallouts(){ return currentCallouts().filter(c => !c.when || c.when(M)).filter(c => state.layer !== 2 || (cellState.data && cellState.data.anchors[c.id])); }
 function buildCallouts(){
   calloutsEl.innerHTML = ''; linesEl.innerHTML = '';
   const list = activeCallouts();
@@ -1370,6 +1558,7 @@ function layout(){
   camera.setViewOffset(W, H, W/2 - cx, H/2 - cy, W, H); camera.updateProjectionMatrix();
   scalebarEl.style.left = (insets.l + 18) + 'px'; scalebarEl.style.top = (H - insets.b - 46) + 'px';
   keysEl.style.right = (insets.r + 18) + 'px'; keysEl.style.top = (H - insets.b - 46) + 'px';
+  const vt = $('#viewtoggle'); if (isBig()){ vt.style.left = (insets.l + 18) + 'px'; vt.style.top = '22px'; } else { vt.style.left = '12px'; vt.style.top = (H - 86) + 'px'; }
   toastEl.style.left = cx + 'px'; toastEl.style.bottom = (insets.b + 14) + 'px';
 }
 new ResizeObserver(layout).observe(stage);
@@ -1382,7 +1571,7 @@ function animate(now){
   const dt = Math.min(1, (now - last) / 1000); last = now;
   stepTransition(now); step3D(now, dt);
   const t = now / 1000, e = easeOut(clamp((now - arrivalT - 250) / 1500));
-  if (state.layer === 0){ cherryExplode(e); updateCherry(dt, t); }
+  if (state.layer === 0){ updateCherry(dt, t); if (state.cherryView === 'stack') updateStack(dt, t, e); else cherryExplode(e); }
   if (state.layer === 1) beanExplode(e);
   if (state.layer === 2 && cellState.data){
     const D = cellState.data; cellState.group.scale.y = Math.max(.001, e);
@@ -1407,8 +1596,8 @@ function animate(now){
 cherryTargets(M); Object.assign(cherryC, cherryT); for (const k in cherryCol) cherryCol[k].copy(cherryColT[k]);
 updateBeanGeometry(M); updateBeanTextures(M);
 showLayer(0);
-camera.position.copy(REST[0].target).add(REST[0].pos.clone().sub(REST[0].target).multiplyScalar(reduceMotion ? 1 : 1.6));
-controls.target.copy(REST[0].target);
+camera.position.copy(restFor(0).target).add(restFor(0).pos.clone().sub(restFor(0).target).multiplyScalar(reduceMotion ? 1 : 1.6));
+controls.target.copy(restFor(0).target);
 cherryExplode(0);
 layout();
 if (!reduceMotion) trans = {t0:performance.now(), phase:2, p0:camera.position.clone(), q0:controls.target.clone()};
