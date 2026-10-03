@@ -216,7 +216,7 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
       <button class="tab" role="tab" data-layer="1" aria-selected="false">Bean<small>10 mm</small></button>
       <button class="tab" role="tab" data-layer="2" aria-selected="false">Chemistry<small>40 µm</small></button>
     </nav>
-    <div class="viewtoggle glass" id="viewtoggle" role="group" aria-label="Cherry view"><button type="button" data-v="stack" aria-pressed="true">Exploded</button><button type="button" data-v="cut" aria-pressed="false">Cut open</button></div>
+    <div class="viewtoggle glass" id="viewtoggle" role="group" aria-label="Cherry view"><button type="button" data-v="cut" aria-pressed="true">Cut open</button><button type="button" data-v="stack" aria-pressed="false">Exploded</button></div>
     <div class="toast glass" id="toast" aria-live="polite"></div>
     <div class="scalebar" id="scalebar"><span id="scale-label">5 mm</span><div class="bar" id="scale-bar" style="width:80px"></div></div>
     <div class="keys" id="keys">drag to orbit · scroll to zoom<br><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> layers · <kbd>R</kbd> reset · <kbd>X</kbd> cherry view</div>
@@ -358,7 +358,7 @@ const $ = (s, el=document) => el.querySelector(s);
 const clamp = (v,a=0,b=1) => Math.min(b, Math.max(a, v));
 const lerp = (a,b,t) => a + (b - a) * t;
 const pct = v => Math.round(v * 100);
-const state = {cherryView:'stack', layer:0, altitude:1000, process:'cultured', agtron:65, varietals:new Set(['SL9','Chandragiri']), dose:15, selected:null};
+const state = {cherryView:'cut', layer:0, altitude:1000, process:'cultured', agtron:65, varietals:new Set(['SL9','Chandragiri']), dose:15, selected:null};
 
 function piece(pts, x){ if (x <= pts[0][0]) return pts[0][1]; for (let i = 1; i < pts.length; i++) if (x <= pts[i][0]){ const [x0,y0] = pts[i-1], [x1,y1] = pts[i]; return lerp(y0, y1, (x - x0) / (x1 - x0)); } return pts[pts.length-1][1]; }
 
@@ -814,9 +814,9 @@ const mats = {
   skin: new THREE.MeshPhysicalMaterial({color:0xffffff, vertexColors:true, roughness:.3, clearcoat:1, clearcoatRoughness:.08, sheen:.35, sheenRoughness:.5, sheenColor:new THREE.Color(0x601020), normalMap:skinNormal, normalScale:new THREE.Vector2(.15, .15), envMapIntensity:1}),
   cap: new THREE.MeshPhysicalMaterial({roughness:.55, clearcoat:.6, clearcoatRoughness:.3, envMapIntensity:.6}),
   rim: new THREE.MeshStandardMaterial({color:0x7d0d1d, roughness:.4}),
-  muc: new THREE.MeshPhysicalMaterial({color:0xd99a30, roughness:.05, clearcoat:1, clearcoatRoughness:.05, transmission:.7, thickness:.08, ior:1.4, transparent:true, opacity:.85, envMapIntensity:1.2}),
-  parch: new THREE.MeshPhysicalMaterial({color:0xdccfae, roughness:.85, clearcoat:0, clearcoatRoughness:.1, envMapIntensity:.4}),
-  beanCut: new THREE.MeshStandardMaterial({roughness:.7, envMapIntensity:.3}),
+  muc: new THREE.MeshPhysicalMaterial({color:0xffffff, roughness:.03, clearcoat:1, clearcoatRoughness:.03, transmission:1, thickness:.15, ior:1.36, attenuationColor:new THREE.Color(0xfff2d8), attenuationDistance:2, envMapIntensity:1.5}),
+  parch: new THREE.MeshPhysicalMaterial({color:0xd2bb92, roughness:.82, clearcoat:0, clearcoatRoughness:.1, sheen:.6, sheenRoughness:.8, sheenColor:new THREE.Color(0xfff2d8), envMapIntensity:.75}),
+  beanCut: new THREE.MeshPhysicalMaterial({roughness:.6, sheen:.5, sheenRoughness:.7, sheenColor:new THREE.Color(0xf2f6e4), envMapIntensity:.75}),
   stem: new THREE.MeshStandardMaterial({color:0x4d4224, roughness:.8}),
 };
 mats.skin.map = (() => {
@@ -826,28 +826,40 @@ mats.skin.map = (() => {
   for (let i = 0; i < 2600; i++){ g.fillStyle = `rgba(255,${210 + rnd()*40|0},${190 + rnd()*40|0},${.35 + rnd()*.4})`; g.beginPath(); g.arc(rnd()*1024, rnd()*512, .6 + rnd()*1.6, 0, 7); g.fill(); }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 1); t.anisotropy = 8; return t;
 })();
+// cut face: wet, fibrous orange pulp like the exploded view
 mats.cap.map = canvasTex(1024, (g, s) => {
   const c = s/2, R = s/2, gr = g.createRadialGradient(c,c,0,c,c,R);
-  gr.addColorStop(0,'#f8ecd0'); gr.addColorStop(.78,'#f3d9a8'); gr.addColorStop(.9,'#f0b48e'); gr.addColorStop(.97,'#d8606a'); gr.addColorStop(1,'#a8202f');
+  gr.addColorStop(0,'#f6a066'); gr.addColorStop(.55,'#f08446'); gr.addColorStop(.8,'#e8622a'); gr.addColorStop(.93,'#d24a22'); gr.addColorStop(.975,'#b8262a'); gr.addColorStop(1,'#8e0c22');
   g.fillStyle = gr; g.fillRect(0,0,s,s);
   const rnd = mulberry32(3); g.lineCap = 'round';
-  for (let i = 0; i < 1600; i++){ const a = rnd()*Math.PI*2, r0 = R*(.8 + rnd()*.12), r1 = r0 + R*(.02 + rnd()*.06);
-    g.strokeStyle = `rgba(${200+rnd()*40|0},${120+rnd()*60|0},${90+rnd()*40|0},${.08+rnd()*.12})`; g.lineWidth = .6 + rnd()*1.2;
-    g.beginPath(); g.moveTo(c+Math.cos(a)*r0, c+Math.sin(a)*r0); g.lineTo(c+Math.cos(a+.01)*r1, c+Math.sin(a+.01)*r1); g.stroke(); }
-  for (let i = 0; i < 300; i++){ const a = rnd()*Math.PI*2, r = R*(.82 + rnd()*.13); g.fillStyle = `rgba(255,245,230,${.12+rnd()*.18})`; g.beginPath(); g.arc(c+Math.cos(a)*r, c+Math.sin(a)*r, 1.5+rnd()*3, 0, Math.PI*2); g.fill(); }
+  for (let i = 0; i < 2600; i++){ const a = rnd()*Math.PI*2, r0 = R*(.55 + rnd()*.38), r1 = r0 + R*(.03 + rnd()*.08);
+    g.strokeStyle = rnd() < .5 ? `rgba(255,${170+rnd()*50|0},${110+rnd()*40|0},${.1+rnd()*.15})` : `rgba(${170+rnd()*40|0},${50+rnd()*30|0},${20+rnd()*20|0},${.1+rnd()*.15})`; g.lineWidth = .8 + rnd()*2;
+    g.beginPath(); g.moveTo(c+Math.cos(a)*r0, c+Math.sin(a)*r0); g.lineTo(c+Math.cos(a+(rnd()-.5)*.02)*r1, c+Math.sin(a+(rnd()-.5)*.02)*r1); g.stroke(); }
+  for (let i = 0; i < 500; i++){ const a = rnd()*Math.PI*2, r = R*(.55 + rnd()*.4); g.fillStyle = `rgba(255,236,210,${.15+rnd()*.25})`; g.beginPath(); g.arc(c+Math.cos(a)*r, c+Math.sin(a)*r, 1+rnd()*2.5, 0, Math.PI*2); g.fill(); }
 });
+mats.cap.normalMap = (() => {
+  const c = makeCanvas(512), g = c.getContext('2d'), rnd = mulberry32(17), C = 256;
+  g.fillStyle = '#808080'; g.fillRect(0, 0, 512, 512); g.lineCap = 'round';
+  for (let i = 0; i < 1800; i++){ const a = rnd()*Math.PI*2, r0 = C*(.45 + rnd()*.5), r1 = r0 + C*(.04 + rnd()*.1);
+    g.strokeStyle = `rgba(${rnd() < .5 ? '40,40,40' : '220,220,220'},${.15 + rnd()*.25})`; g.lineWidth = .8 + rnd()*2.2;
+    g.beginPath(); g.moveTo(C + Math.cos(a)*r0, C + Math.sin(a)*r0); g.lineTo(C + Math.cos(a)*r1, C + Math.sin(a)*r1); g.stroke(); }
+  return normalFromHeight(c, 3);
+})();
+mats.cap.normalScale = new THREE.Vector2(.9, .9);
+Object.assign(mats.cap, {roughness:.32, clearcoat:1, clearcoatRoughness:.12, sheen:.5, sheenColor:new THREE.Color(0xffb27a), envMapIntensity:1});
+mats.rim.color.set(0x8e0c22);
 function dPoints(sign, w, h, gx, n=48){ const pts = []; for (let i = 0; i <= n; i++){ const t = -Math.PI/2 + Math.PI*i/n; pts.push(new THREE.Vector2(sign*(gx + w*Math.cos(t)), h*Math.sin(t))); } return pts; }
 function beanSectionTex(k){
   const span = 1.4;
   return canvasTex(1024, (g, s) => {
     const P = (x,y) => [(x/span + .5)*s, (1 - (y/span + .5))*s];
-    g.fillStyle = '#c8cfac'; g.fillRect(0,0,s,s);
+    g.fillStyle = '#9aa486'; g.fillRect(0,0,s,s);
     [1,-1].forEach(sign => {
       const pts = dPoints(sign, CH.w*k, CH.h*k, CH.gap, 64);
       const path = () => { g.beginPath(); pts.forEach((p,i) => { const [x,y] = P(p.x,p.y); i ? g.lineTo(x,y) : g.moveTo(x,y); }); g.closePath(); };
       g.save(); path(); g.clip();
       const [cx, cy] = P(sign*(CH.gap + CH.w*k*.42), 0), gr = g.createRadialGradient(cx, cy, 0, cx, cy, s*.32);
-      gr.addColorStop(0,'#e4e8cc'); gr.addColorStop(.7,'#c6d0a8'); gr.addColorStop(1,'#a5b48a'); g.fillStyle = gr; g.fillRect(0,0,s,s);
+      gr.addColorStop(0,'#b9bd98'); gr.addColorStop(.6,'#a2ab86'); gr.addColorStop(1,'#84927a'); g.fillStyle = gr; g.fillRect(0,0,s,s);
       const rnd = mulberry32(sign > 0 ? 11 : 12);
       for (let i = 0; i < 1100; i++){ const [x,y] = P(sign*(CH.gap + rnd()*CH.w*k), (rnd()*2-1)*CH.h*k); g.fillStyle = `rgba(90,110,70,${rnd()*.1})`; g.fillRect(x, y, 2, 2); }
       g.lineWidth = 7; g.strokeStyle = 'rgba(236,238,226,.85)'; path(); g.stroke();
@@ -970,7 +982,7 @@ function updateCherry(dt, t){
   const solid = c.skin > .35; mats.skin.clearcoat = solid ? 1 - c.wrinkle*.7 : 0;
   mats.skin.normalScale.setScalar(.15 + c.wrinkle*1.6); mats.skin.roughness = .3 + c.wrinkle*.35;
   mats.cap.color.copy(cherryCol.pulp);
-  mats.muc.color.copy(cherryCol.muc); mats.muc.opacity = Math.min(.55, c.muc*.8);
+  mats.muc.attenuationColor.copy(cherryCol.muc); mats.muc.attenuationDistance = lerp(3, .3, clamp(c.mucLevel - .3));
   setOpacity(mats.parch, clamp(c.parch)); mats.parch.clearcoat = c.wet; mats.parch.roughness = .85 - c.wet*.65;
   mats.beanCut.color.copy(cherryCol.bean);
   const {back, front, dew} = cherryParts;
@@ -1108,8 +1120,8 @@ function paintBeanCap(g, s, sign, b, M){
   const rnd = mulberry32(sign > 0 ? 21 : 22), tmp = new THREE.Color();
   for (let i = 0; i < 3200; i++){ tmp.copy(innerC).lerp(outerC, rnd()).multiplyScalar(.85 + rnd()*.3); g.fillStyle = `rgba(${tmp.r*255|0},${tmp.g*255|0},${tmp.b*255|0},${.05 + rnd()*.1})`; g.beginPath(); g.arc(rnd()*s, rnd()*s, 2 + rnd()*9, 0, 7); g.fill(); }
   // faint cell walls: visible as a fine net, tighter in dense beans
-  const cell = 9 + (1 - M.density)*11, jit = k => ((Math.sin(k*12.9898)*43758.5453 % 1) + 1) % 1 * cell*.35;
-  g.strokeStyle = `rgba(35,18,8,${.08 + M.density*.1})`; g.lineWidth = .5 + M.cell.wall*14;
+  const cell = 12 + (1 - M.density)*14, jit = k => ((Math.sin(k*12.9898)*43758.5453 % 1) + 1) % 1 * cell*.35;
+  g.strokeStyle = `rgba(35,18,8,${.3 + M.density*.2})`; g.lineWidth = 1 + M.cell.wall*26;
   for (let r = -2; r < s/(cell*1.5) + 2; r++) for (let q = -2; q < s/(cell*1.732) + 2; q++){
     const x = q*cell*1.732 + (r & 1)*cell*.866, y = r*cell*1.5;
     g.beginPath();
@@ -1157,7 +1169,7 @@ function updateBeanGeometry(M){
 }
 function updateBeanTextures(M){ repaint(halfA.tex, (g, s) => paintBeanCap(g, s, 1, BP, M)); }
 function beanExplode(e){
-  hingeA.position.set(1.1*BP.scale, 0, -.1); hingeA.rotation.y = -1.2*e;
+  hingeA.position.set(.95*BP.scale, .05, -.1 + 1.3*e); hingeA.rotation.y = -1.68*e;
   hingeW.position.set(-.95*BP.scale, .05, -.2); hingeW.rotation.set(-.32*e, Math.PI*e, -.5*e);
 }
 const unitDir = (x, y, z) => { const l = Math.hypot(x, y, z); return [x/l, y/l, z/l]; };
@@ -1209,6 +1221,7 @@ const stackMats = {
   silver: new THREE.MeshPhysicalMaterial({color:0xf2ede2, roughness:.4, transmission:.6, thickness:.02, transparent:true, opacity:.82, sheen:.7, sheenColor:new THREE.Color(0xffffff), normalMap:veinNormal, normalScale:new THREE.Vector2(.6, .6), side:THREE.DoubleSide, depthWrite:false, envMapIntensity:1}),
 };
 function skinColors(geo){ const p = geo.attributes.position, col = []; for (let i = 0; i < p.count; i++){ const x = p.getX(i), y = p.getY(i), z = p.getZ(i), n = Math.sin(x*7.1 + y*3.3)*Math.sin(z*6.3 - y*5.1)*.5 + .5, v = 1 - clamp((y - .35)*1.1)*.4 + n*.15; col.push(v, v, v); } geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); return geo; }
+mats.parch.normalMap = veinNormal; mats.parch.normalScale = new THREE.Vector2(1, 1); mats.beanCut.normalMap = beanNormal; mats.beanCut.normalScale = new THREE.Vector2(.8, .8);
 const EX = {skin:2.25, pulp:1.52, muc:.95, parch:.38, silver:-.12, bean:-.64, cup:-1.38};
 const SL = {};
 const greenBean = makeBean('whole', greenMat, 5.5);
