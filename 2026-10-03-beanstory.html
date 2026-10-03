@@ -128,6 +128,10 @@ select option,select optgroup{background:#121829;color:var(--ink)}
 .eyebrow{font-family:var(--f-mono);font-size:11px;color:var(--cyan);letter-spacing:.04em;display:flex;justify-content:space-between;gap:10px}
 .eyebrow button{border:0;background:none;padding:0;color:var(--mute);font:inherit}
 .eyebrow button:hover{color:#fff}
+.eyebrow .tools{display:flex;gap:14px}
+.reading[hidden],.show-notes[hidden]{display:none!important}
+.show-notes{position:absolute;z-index:5;padding:6px 12px;border-radius:999px;font-size:12.5px;color:var(--soft);border:1px solid var(--line)}
+.show-notes:hover{color:#fff}
 .reading h2{margin:0;font-size:21px;font-weight:700;line-height:1.2;letter-spacing:-.2px;text-wrap:balance}
 .reading .lead{margin:0;font-size:14.5px;color:var(--soft);line-height:1.6;max-width:62ch;text-wrap:pretty}
 .reading .lead b{color:#fff;font-weight:600}
@@ -218,8 +222,9 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
     </nav>
     <div class="viewtoggle glass" id="viewtoggle" role="group" aria-label="Cherry view"><button type="button" data-v="cut" aria-pressed="true">Cut open</button><button type="button" data-v="stack" aria-pressed="false">Exploded</button></div>
     <div class="toast glass" id="toast" aria-live="polite"></div>
+    <button type="button" class="show-notes glass" id="show-notes" hidden>Show notes</button>
     <div class="scalebar" id="scalebar"><span id="scale-label">5 mm</span><div class="bar" id="scale-bar" style="width:80px"></div></div>
-    <div class="keys" id="keys">drag to orbit · scroll to zoom<br><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> layers · <kbd>R</kbd> reset · <kbd>X</kbd> cherry view</div>
+    <div class="keys" id="keys">drag to orbit · scroll to zoom<br><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> layers · <kbd>R</kbd> reset · <kbd>X</kbd> cherry view · <kbd>H</kbd> notes</div>
   </div>
 
   <div class="side">
@@ -245,8 +250,14 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
         <div class="field">
           <div class="field-head"><span class="label" id="roast-label">Roast</span><span class="readout" id="agtron-out"></span></div>
           <div class="seg" id="roast" role="group" aria-labelledby="roast-label"></div>
-          <input type="range" id="agtron" min="30" max="95" step="1" value="65" aria-label="Agtron number (optional fine-tune)">
-          <div class="ticks"><span>Agtron 30 · dark</span><span>95 · light</span></div>
+          <input type="range" id="agtron" min="25" max="95" step="1" value="65" aria-label="Agtron number (optional fine-tune)">
+          <div class="ticks"><span>Agtron 25 · very dark</span><span>95 · very light</span></div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><label class="label" for="days">Roasted</label><span class="readout" id="days-out"></span></div>
+          <input type="range" id="days" min="2" max="60" step="1" value="14">
+          <div class="ticks"><span>2 days</span><span>3 weeks</span><span>60 days</span></div>
         </div>
 
         <div class="field">
@@ -303,35 +314,36 @@ const PROCESSES = [
     title:'Yellow honey: a thin coat of mucilage', lead:'A little mucilage stays on and dries quickly. A touch <b>sweeter</b> than washed, still bright.'},
   {id:'rhoney',    group:'Classic', name:'Red honey', fruit:.6, ferm:.35, weak:.15, sol:.1, sugar:.45, acid:0, lac:.15, ace:.08, est:.3, body:.2, temp:-.5, grind:.2, dens:0, stage:'honey', muc:.75,
     title:'Red honey: more mucilage, slower drying', lead:'About half the mucilage stays on and dries slowly in shade, for <b>deeper sweetness and fruit</b>.'},
-  {id:'bhoney',    group:'Classic', name:'Black honey', fruit:.8, ferm:.45, weak:.2, sol:.14, sugar:.6, acid:-.05, lac:.2, ace:.1, est:.4, body:.3, temp:-.7, grind:.3, dens:0, stage:'honey', muc:1,
+  {id:'bhoney',    group:'Classic', name:'Black honey', fruit:.8, ferm:.45, weak:.2, sol:.14, sugar:.6, acid:-.05, lac:.2, ace:.1, est:.4, body:.3, temp:-.8, grind:.3, dens:0, stage:'honey', muc:1,
     title:'Black honey: nearly all the mucilage stays', lead:'Almost all the mucilage dries on the bean, slowly and covered. <b>Jammy, heavy sweetness</b>, close to a natural.'},
-  {id:'natural',   group:'Classic', name:'Natural', fruit:1, ferm:.5, weak:.3, sol:.18, sugar:.8, acid:-.05, lac:.2, ace:.15, est:.55, body:.35, temp:-.8, grind:.5, dens:-.05, stage:'natural', muc:.6,
+  {id:'natural',   group:'Classic', name:'Natural', fruit:1, ferm:.5, weak:.3, sol:.18, sugar:.8, acid:-.05, lac:.2, ace:.15, est:.55, body:.35, temp:-1, grind:.5, dens:-.05, stage:'natural', muc:.6,
     title:'Natural: dried inside the whole cherry', lead:'The cherry dries for weeks like a raisin. Wild yeasts ferment the fruit, and <b>sugars and fruity esters</b> soak through the parchment into the bean.'},
   {id:'anaerobic', group:'Fermentation', name:'Anaerobic', fruit:.8, ferm:.75, weak:.4, sol:.25, sugar:.7, acid:0, lac:.5, ace:.3, est:.8, body:.35, temp:-1.5, grind:.7, dens:0, stage:'tank', muc:.85,
     title:'Anaerobic: fermented without oxygen', lead:'Cherries ferment in <b>sealed tanks</b>. With no oxygen, microbes make more <b>lactic and acetic acid</b>. Funky, intense, extracts fast.'},
   {id:'carbonic',  group:'Fermentation', name:'Carbonic maceration', fruit:1, ferm:.7, weak:.35, sol:.22, sugar:.75, acid:0, lac:.35, ace:.15, est:.95, body:.3, temp:-1.5, grind:.6, dens:0, stage:'carbonic', muc:.85,
     title:'Carbonic maceration: whole cherries under CO₂', lead:'Whole cherries sit in tanks flushed with <b>CO₂</b>, as in Beaujolais wine. Fermentation starts inside each cherry: <b>vivid, winey, candy-like</b> fruit.'},
-  {id:'cultured',  group:'Fermentation', name:'Cultured (inoculated) natural', fruit:1, ferm:.85, weak:.5, sol:.3, sugar:.85, acid:0, lac:.6, ace:.4, est:.9, body:.4, temp:-.6, grind:.8, dens:0, stage:'cultured', muc:.85,
-    title:'Cultured natural: chosen microbes do the work', lead:'Producers add <b>selected yeasts or lactic bacteria</b>. They turn fruit sugars into lactic and acetic acids and esters, and their enzymes <b>soften the cell walls</b>.'},
+  {id:'cultured',  group:'Fermentation', name:'Cultured (inoculated) natural', fruit:1, ferm:.85, weak:.5, sol:.3, sugar:.85, acid:0, lac:.6, ace:.4, est:.9, body:.4, temp:-1.5, grind:.8, dens:0, stage:'cultured', muc:.85,
+    title:'Cultured natural: chosen microbes do the work', lead:'Producers add <b>selected yeasts or lactic bacteria</b>. They turn fruit sugars into <b>lactic and acetic acids and esters</b>, steering flavour more predictably than wild fermentation.'},
   {id:'coferment', group:'Fermentation', name:'Co-fermented', fruit:.9, ferm:.7, weak:.35, sol:.25, sugar:.8, acid:.05, lac:.4, ace:.2, est:1, body:.3, temp:-1.5, grind:.6, dens:0, stage:'coferment', muc:.85,
     title:'Co-fermented: fermented with added fruit', lead:'<b>Fruit, spices or juice</b> go into the tank. Their sugars and aromas join the fermentation and soak into the bean. Very expressive.'},
   {id:'thermal',   group:'Fermentation', name:'Thermal shock', fruit:.7, ferm:.6, weak:.3, sol:.22, sugar:.6, acid:.05, lac:.3, ace:.15, est:.85, body:.25, temp:-1.2, grind:.5, dens:0, stage:'thermal', muc:.7,
     title:'Thermal shock: hot, then cold', lead:'After fermentation the cherries go into <b>hot water, then cold</b>. The swing opens the parchment and locks aromas into the bean.'},
-  {id:'wethulled', group:'Regional', name:'Wet-hulled (Giling Basah)', fruit:.2, ferm:.3, weak:.35, sol:.15, sugar:.2, acid:-.25, lac:.1, ace:.1, est:.15, body:.5, temp:-1, grind:.4, dens:-.1, stage:'wethulled', muc:0,
+  {id:'wethulled', group:'Regional', name:'Wet-hulled (Giling Basah)', fruit:.2, ferm:.3, weak:.35, sol:.15, sugar:.2, acid:-.25, lac:.1, ace:.1, est:.15, body:.5, temp:-.8, grind:.4, dens:-.1, stage:'wethulled', muc:0,
     title:'Wet-hulled: parchment off while still wet', lead:'Common in Indonesia. The parchment is stripped at about 50% moisture and the <b>naked bean</b> dries fast. Earthy, low acid, heavy body.'},
-  {id:'monsooned', group:'Regional', name:'Monsooned Malabar', fruit:0, ferm:.1, weak:.45, sol:.2, sugar:.1, acid:-.4, lac:.05, ace:.05, est:.05, body:.55, temp:-1, grind:.6, dens:-.3, stage:'monsooned', muc:0,
+  {id:'monsooned', group:'Regional', name:'Monsooned Malabar', fruit:0, ferm:.1, weak:.45, sol:.2, sugar:.1, acid:-.4, lac:.05, ace:.05, est:.05, body:.55, temp:-.8, grind:.6, dens:-.2, stage:'monsooned', muc:0,
     title:'Monsooned Malabar: swollen by monsoon winds', lead:'An Indian classic. Green beans sit in open warehouses through the monsoon, <b>swell, turn pale</b> and lose most of their acidity.'},
 ];
 const PROC = Object.fromEntries(PROCESSES.map(p => [p.id, p]));
 
+// SCA roast colour tiles: 95 very light, 85 light, 75 moderately light, 65 light-medium, 55 medium, 45 medium-dark, 35 dark, 25 very dark
 const ROASTS = [
-  {id:'light', name:'Light', ag:82}, {id:'mlight', name:'Med-light', ag:72}, {id:'medium', name:'Medium', ag:65},
-  {id:'mdark', name:'Med-dark', ag:57}, {id:'dark', name:'Dark', ag:45},
+  {id:'light', name:'Light', ag:82}, {id:'mlight', name:'Light-med', ag:68}, {id:'medium', name:'Medium', ag:57},
+  {id:'mdark', name:'Med-dark', ag:47}, {id:'dark', name:'Dark', ag:35},
 ];
-const roastFor = a => a >= 75 ? 'light' : a >= 69 ? 'mlight' : a >= 60 ? 'medium' : a >= 53 ? 'mdark' : 'dark';
+const roastFor = a => a >= 75 ? 'light' : a >= 63 ? 'mlight' : a >= 53 ? 'medium' : a >= 43 ? 'mdark' : 'dark';
 
 // name, acid, sweet, body, lipid, phosphoric, size, shape, cherry colour
-const V = (name, acid, sweet, body, lipid, phos=.3, size=1, shape='oval', cherry='red') => ({name, acid, sweet, body, lipid, phos, size, shape, cherry});
+const V = (name, acid, sweet, body, lipid, phos=.3, size=1, shape='oval', cherry='red') => ({name, acid, sweet, body, lipid, phos, size, shape, cherry, robusta: shape === 'robusta' ? 1 : 0});
 const VARIETALS = [
   {group:'Indian', items:[V('SL9',.8,.6,.5,.4,.8), V('S.795',.5,.6,.65,.55), V('Chandragiri',.35,.75,.8,.8,.25,1.02,'round'), V('Cauvery (Catimor)',.4,.45,.6,.5),
     V('Sln.5B',.5,.5,.6,.5), V('Selection 6',.45,.5,.6,.5), V('Kent',.5,.55,.55,.5,.3,1,'long'), V('Robusta S.274',.15,.25,.95,.3,.1,.85,'robusta'), V('CxR',.25,.35,.85,.35,.15,.9,'robusta')]},
@@ -345,6 +357,7 @@ const VAR = {}; VARIETALS.forEach(g => g.items.forEach(v => VAR[v.name] = v));
 const VAR_DEFAULT = V('Unknown',.55,.6,.55,.5);
 
 const ACIDS = [
+  {k:'chlorogenic', name:'Chlorogenic', css:'#7ff0c0'},
   {k:'citric', name:'Citric', css:'#ffd84a'}, {k:'malic', name:'Malic', css:'#b8f05a'}, {k:'phosphoric', name:'Phosphoric', css:'#7fe3ff'},
   {k:'lactic', name:'Lactic', css:'#fff3e2'}, {k:'acetic', name:'Acetic', css:'#ff9fb4'}, {k:'quinic', name:'Quinic (bitter)', css:'#c58bff'},
 ];
@@ -358,10 +371,15 @@ const $ = (s, el=document) => el.querySelector(s);
 const clamp = (v,a=0,b=1) => Math.min(b, Math.max(a, v));
 const lerp = (a,b,t) => a + (b - a) * t;
 const pct = v => Math.round(v * 100);
-const state = {cherryView:'cut', layer:0, altitude:1000, process:'cultured', agtron:65, varietals:new Set(['SL9','Chandragiri']), dose:15, selected:null};
+const state = {cherryView:'cut', layer:0, altitude:1000, process:'cultured', agtron:65, varietals:new Set(['SL9','Chandragiri']), dose:15, days:14, selected:null};
 
 function piece(pts, x){ if (x <= pts[0][0]) return pts[0][1]; for (let i = 1; i < pts.length; i++) if (x <= pts[i][0]){ const [x0,y0] = pts[i-1], [x1,y1] = pts[i]; return lerp(y0, y1, (x - x0) / (x1 - x0)); } return pts[pts.length-1][1]; }
 
+// The model blends three kinds of input:
+//  - well established: roast degree drives colour, porosity, brittleness, CO₂, sucrose loss, chlorogenic-acid
+//    breakdown and how easily the coffee extracts (SCA roast scale, Illy & Viani, Clarke & Vitzthum);
+//  - fairly established: altitude correlates with density and acidity, but latitude and climate shift it;
+//  - heuristic: varietal and processing flavour traits. These are kept deliberately small.
 function model(st){
   const P = PROC[st.process];
   const vl = [...st.varietals].map(n => VAR[n]).filter(Boolean);
@@ -369,29 +387,33 @@ function model(st){
   const avg = k => vs.reduce((a, v) => a + v[k], 0) / vs.length;
   const prim = vs[0];
   const altN = clamp((st.altitude - 600) / 1800);
-  const roastN = clamp((95 - st.agtron) / 65);
-  const density = clamp(0.18 + 0.62*altN + P.dens - P.weak*0.25 + (prim.shape === 'robusta' ? .08 : 0));
-  const porosity = clamp(0.2 + 0.45*roastN + 0.3*(1 - density) + P.weak*0.25);
-  const solubility = clamp(0.25 + 0.35*roastN + 0.25*(1 - density) + P.sol);
-  const fines = clamp(0.1 + 0.35*(1 - density) + 0.3*roastN + P.weak*0.45);
-  const acidity = clamp((0.2 + 0.45*altN + 0.3*avg('acid') + P.acid) * (1 - 0.7*roastN));
-  const sweetness = clamp(0.3 + 0.3*avg('sweet') + 0.3*P.sugar - Math.abs(roastN - 0.45)*0.5);
-  const body = clamp(0.15 + 0.35*avg('body') + 0.3*roastN + 0.2*P.body);
-  const co2 = clamp(0.15 + 0.6*roastN + 0.35*P.ferm);
-  const fade = 1 - 0.75*roastN;
+  const roastN = clamp((95 - st.agtron) / 70);                 // SCA tiles: 95 very light … 25 very dark
+  const fresh = clamp((21 - st.days) / 18);                    // CO₂ is mostly lost over the first 2–3 weeks
+  const robusta = avg('robusta');
+  const density = clamp(0.15 + 0.6*altN + P.dens - P.weak*0.1 + robusta*.05, .05, 1);
+  const porosity = clamp(0.15 + 0.6*roastN + 0.2*(1 - density) + P.weak*0.1);
+  const solubility = clamp(0.2 + 0.45*roastN + 0.2*(1 - density) + P.sol*0.5);
+  const fines = clamp(0.1 + 0.5*roastN + 0.15*(1 - density) + P.weak*0.15);
+  const acidity = clamp((0.2 + 0.45*altN + 0.25*avg('acid') + P.acid) * (1 - 0.7*roastN), .05, 1);
+  const sweetness = clamp(0.3 + 0.25*avg('sweet') + 0.25*P.sugar - Math.abs(roastN - 0.4)*0.45);
+  const body = clamp(0.15 + 0.3*avg('body') + 0.3*roastN + 0.2*P.body);
+  const co2 = clamp(0.2 + 0.5*roastN + 0.45*fresh);
+  const fade = 1 - 0.8*roastN;
   const acids = {
+    chlorogenic: 0.8*Math.pow(1 - roastN, 1.2) * (1 + robusta*.5),            // 6–8 % of green arabica, breaks down in roasting
     citric: clamp(avg('acid') * (0.45 + 0.55*altN)) * fade,
-    malic: clamp(0.15 + 0.4*altN + (P.id === 'washed' ? .3 : 0) - P.ferm*.2) * fade,
-    phosphoric: avg('phos') * fade,
-    lactic: P.lac * fade, acetic: P.ace * fade,
-    quinic: roastN * roastN,
+    malic: clamp(0.15 + 0.4*altN + (P.id === 'washed' ? .15 : 0)) * fade,
+    phosphoric: avg('phos') * 0.6,                                            // mineral acid, heat stable
+    lactic: P.lac * (1 - 0.3*roastN),
+    acetic: P.ace * fade + 0.45*Math.exp(-Math.pow((roastN - 0.35) / 0.2, 2)), // also formed from sugars, peaks light-medium
+    quinic: 0.9*Math.pow(roastN, 1.5),                                        // from chlorogenic acid: roasty bitterness
   };
-  const sugars = clamp(0.35 + 0.25*avg('sweet') + 0.45*P.sugar);
-  const lipids = clamp(0.3 + 0.6*avg('lipid'));
+  const sugars = clamp(0.4 + 0.2*avg('sweet') + 0.3*P.sugar - robusta*.25);
+  const lipids = clamp(0.55 + 0.25*(avg('lipid') - .5) - robusta*.2);       // arabica ~15 % oil, robusta ~10 %
   const esters = clamp(P.est * (1 - 0.6*roastN));
-  const smoke = clamp((roastN - 0.55) / 0.4);
-  const oil = clamp((roastN - 0.62) / 0.3);
-  const mel = clamp(roastN*1.15 - 0.12);
+  const smoke = clamp((roastN - 0.6) / 0.35);
+  const oil = clamp((roastN - 0.7) / 0.22);                                 // oil surfaces around second crack
+  const mel = clamp(roastN*1.1 - 0.1);
   const expand = 1 + 0.16*roastN*(1.2 - density*0.6) + (P.id === 'monsooned' ? .12 : 0);
   const shape = prim.shape;
   const bean = {
@@ -404,53 +426,59 @@ function model(st){
   };
   const cell = {
     s: 0.30 + 0.14*(1 - density),
-    wall: Math.max(0.014, 0.022 + 0.042*density - 0.014*P.weak - 0.01*roastN),
-    rupture: clamp(0.02 + P.weak*0.18 + roastN*roastN*0.22 + (P.id === 'monsooned' ? .08 : 0)),
+    wall: Math.max(0.014, 0.022 + 0.042*density - 0.006*P.weak - 0.012*roastN),
+    rupture: clamp(0.02 + P.weak*0.06 + roastN*roastN*0.3 + (P.id === 'monsooned' ? .08 : 0)),
   };
-  const M = {st, P, prim, vs, altN, roastN, density, porosity, solubility, fines, acidity, sweetness, body, co2, acids, sugars, lipids, esters, smoke, oil, mel, bean, cell};
+  const M = {st, P, prim, vs, altN, roastN, fresh, density, porosity, solubility, fines, acidity, sweetness, body, co2, acids, sugars, lipids, esters, smoke, oil, mel, bean, cell};
   M.recipe = recipe(M);
   return M;
 }
 
-/* ---------- recipe rules (from the notes) ---------- */
+/* ---------- recipe rules ----------
+   Temperature: light roasts 94–99 °C, medium 90–94, dark 85–90 (mainstream specialty guidance; Hoffmann, SCA).
+   Grind: finer for light/dense, coarser for dark/brittle and older-is-finer. Ratio around 1:16 (SCA Golden Cup ≈ 1:16–1:18).
+   Bloom: 3× dose, 30–45 s, longer for fresher and darker coffee. Total time on a V60-02 for 12–20 g: about 2:30–3:30. */
 const fmtT = s => Math.floor(s/60) + ':' + String(Math.round(s % 60)).padStart(2,'0');
 const r5 = v => Math.round(v / 5) * 5;
 function recipe(M){
   const {P, st, roastN, density, fines, co2, altN} = M;
-  let temp = piece([[35,81],[45,83],[55,86],[65,91.5],[75,94],[90,96]], st.agtron);
-  temp += altN > 0.5 ? (altN - 0.5) * 3 : (altN - 0.5) * 2.4;
-  temp += P.temp;
-  temp = clamp(temp, 80, 96);
-  const grindIdx = (roastN - 0.45)*2.6 + (0.5 - density)*1.6 + P.grind;
+  let temp = piece([[25,85],[35,86],[45,88],[55,90.5],[65,93],[75,95],[85,96.5],[95,97]], st.agtron);
+  temp += (altN - 0.4) * 2.5;          // dense, high-grown beans take a little more heat
+  temp += P.temp;                      // fermented and fruit-dried coffees: a little cooler tames harsh ferment notes
+  temp = clamp(temp, 84, 99);
+  const ageAdj = -(clamp(st.days, 7, 60) - 14) / 46 * .6;   // older coffee: slightly finer
+  const grindIdx = (roastN - 0.45)*2.4 + (0.5 - density)*1.2 + P.grind*0.6 + ageAdj;
   const clicks = Math.round(clamp(18 + 1.5*grindIdx, 12, 28));
   const grindWord = grindIdx < -1 ? 'medium-fine · table salt' : grindIdx < .5 ? 'medium · sand' : grindIdx < 2 ? 'medium-coarse · sea salt' : 'coarse · kosher salt';
-  const ratio = (P.ferm >= .6 || (roastN < .3 && density > .6)) ? 16 : roastN > .7 ? 15 : 15.5;
+  const ratio = roastN > .7 ? 15 : (roastN < .3 && density > .6) ? 16.5 : 16;
   const dose = st.dose, water = r5(dose * ratio), bloomG = r5(dose * 3);
-  const bloomS = r5(30 + 20*co2);
+  const bloomS = r5(30 + 15*co2);
   const n = roastN > .72 ? 2 : (roastN < .3 && density > .55) ? 4 : 3;
-  const gap = roastN > .72 ? 35 : (fines > .6 || M.lipids > .6) ? 45 : 40;
+  let gap = roastN > .72 ? 35 : 40 + (M.lipids > .6 ? 5 : 0);
+  gap = Math.max(gap, (110 - bloomS) / Math.max(1, n - 1));   // keep the last pour after ~1:50 so total time lands near 2:30–3:30
   const pours = [{t:0, to:bloomG, dur:5, name:'Bloom', how: co2 > .6 ? 'Fast circles, gentle swirl. Long bloom.' : 'Fast circles, gentle swirl.',
-    why: co2 > .6 ? 'Lots of CO₂ to release before water can get in.' : 'Lets the gas out so water can reach the cells.'}];
+    why: co2 > .6 ? 'Fresh or dark coffee holds lots of CO₂. Let it escape first.' : 'Lets the gas out so water can reach the cells.'}];
   const step = (water - bloomG) / n;
   for (let i = 0; i < n; i++){
     const to = i === n - 1 ? water : r5(bloomG + step*(i+1));
     const amt = to - pours[pours.length-1].to;
     const first = i === 0, last = i === n - 1;
     let how = first ? (roastN > .72 ? 'Gentle spiral from the centre.' : 'Slow concentric circles.')
-              : fines > .6 ? 'Dead centre, steady stream.' : roastN < .3 ? 'Circles out to the edge.' : 'Small circles near the centre.';
+              : fines > .6 ? 'Centre, steady stream.' : roastN < .3 ? 'Circles out to the edge.' : 'Small circles near the centre.';
     if (last) how += roastN > .72 ? ' No swirl.' : ' Soft final swirl.';
-    const why = first ? 'Pulls the fast fruit acids out first.' : last ? 'Sweeps up the slow sugars and oils.' : fines > .6 ? 'Centre pouring keeps fines off the paper.' : 'Keeps extraction even.';
+    const why = first ? 'Acids and aromatics extract first.' : last ? 'Sweetness and body come later in the brew.' : fines > .6 ? 'Low agitation keeps fines off the paper.' : 'Keeps extraction even.';
     pours.push({t: bloomS + gap*i, to, dur: Math.round(amt / 5.5), name: 'Pour ' + (i+1), how, why});
   }
   const lastP = pours[pours.length-1];
-  const drain = lastP.t + lastP.dur + Math.round(10 + 6*fines);
+  const drain = lastP.t + lastP.dur + Math.round(12 + 10*fines);
   const tLo = Math.round(temp - .5), tHi = Math.round(temp + .5);
   const dWord = density < .35 ? 'soft' : density < .6 ? 'medium-density' : 'hard, dense';
+  const rWord = st.agtron >= 75 ? 'light' : st.agtron >= 63 ? 'light-medium' : st.agtron >= 53 ? 'medium' : st.agtron >= 43 ? 'medium-dark' : 'dark';
   const why = [
-    `<b>${dWord[0].toUpperCase() + dWord.slice(1)} bean, ${P.name.toLowerCase()}:</b> fines risk ${pct(fines)}. ${grindIdx > .5 ? 'Grind coarser so the bed keeps flowing.' : grindIdx < -.5 ? 'Grind finer to get into the tight cells.' : 'A medium grind works.'}`,
-    `<b>Agtron ${st.agtron}, solubility ${pct(M.solubility)}:</b> ${temp >= 93 ? 'hot water forces flavour out of a dense, locked bean.' : temp <= 86 ? 'cool water stops bitter, roasty compounds from rushing out.' : 'water just off the boil, as a brake on over-extraction.'}`,
-    `<b>${M.vs.map(v => v.name).slice(0,3).join(' + ')}:</b> ${M.acids.phosphoric > .45 || M.acids.citric > .5 ? 'bright acids leave fast' : 'gentle acidity'}${M.lipids > .6 ? ', heavy sugars and oils leave slowly, so wait between pours.' : '.'}`,
-    `<b>1:${ratio}</b> ${ratio >= 16 ? 'gives intense, fermented flavours room to open up.' : ratio <= 15 ? 'keeps body for a darker roast.' : 'balances clarity and body.'}`,
+    `<b>Agtron ${st.agtron} (${rWord}):</b> roast sets the base temperature. ${temp >= 94 ? 'Light roasts are dense and slow to give up flavour, so go near boiling.' : temp <= 88 ? 'Dark roasts extract fast and turn ashy when hot, so go cooler.' : 'Just off the boil keeps sweetness without roasty bitterness.'}`,
+    `<b>${dWord[0].toUpperCase() + dWord.slice(1)} bean at ${st.altitude} m:</b> ${density > .6 ? 'a little finer and hotter to get into the tight cells.' : 'it gives up flavour easily, so no need to push.'}`,
+    `<b>${P.name}:</b> ${P.temp <= -1 ? 'fermentation-driven flavours can turn harsh or medicinal when over-extracted. Slightly cooler and coarser.' : P.temp < 0 ? 'fruit-dried coffees are sweet and full. A touch cooler keeps them clean.' : 'clean and structured. Standard temperature works.'}`,
+    `<b>Roasted ${st.days} days ago:</b> ${st.days < 7 ? 'very fresh, lots of gas. Long bloom, and it may taste better after a few more days.' : st.days > 35 ? 'mostly degassed. Short bloom, grind a touch finer.' : 'in the sweet spot for filter.'}`,
   ];
   return {temp, tLo, tHi, clicks, grindWord, ratio, dose, water, pours, drain, why};
 }
@@ -470,6 +498,7 @@ ROASTS.forEach(r => { const b = document.createElement('button'); b.type = 'butt
 $('#altitude').addEventListener('input', e => { state.altitude = +e.target.value; changed('altitude'); });
 procSel.addEventListener('change', e => { state.process = e.target.value; changed('process'); });
 $('#agtron').addEventListener('input', e => { state.agtron = +e.target.value; changed('roast'); });
+$('#days').addEventListener('input', e => { state.days = +e.target.value; changed('days'); });
 $('#var-search').addEventListener('input', renderChips);
 
 function renderChips(){
@@ -496,10 +525,11 @@ function renderConsole(){
   $('#altitude').value = state.altitude; procSel.value = state.process; $('#agtron').value = state.agtron;
   $('#alt-out').textContent = state.altitude.toLocaleString('en-US') + ' MASL';
   $('#agtron-out').textContent = 'Agtron ' + state.agtron;
+  $('#days').value = state.days; $('#days-out').textContent = state.days + ' days ago';
   const rid = roastFor(state.agtron);
   roastSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.r === rid));
   $('#var-count').textContent = state.varietals.size ? state.varietals.size + ' selected' : 'none';
-  $('#var-hint').textContent = state.varietals.size > 1 ? `Bean shape follows ${M.prim.name}. Chemistry blends all ${state.varietals.size}.` : state.varietals.size ? '' : 'Pick at least one to shape the bean.';
+  $('#var-hint').textContent = state.varietals.size > 1 ? `Bean shape follows ${M.prim.name}. Chemistry blends all ${state.varietals.size}. Varietal flavour traits are generalisations.` : state.varietals.size ? '' : 'Pick at least one to shape the bean.';
   const dWord = M.density < .35 ? 'Soft' : M.density < .6 ? 'Medium' : 'Hard';
   $('#chips').innerHTML = [['Altitude', state.altitude + ' m'], ['Agtron', state.agtron], ['Density', dWord + ' ' + pct(M.density)]]
     .map(([k,v]) => `<div class="stat"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
@@ -529,7 +559,7 @@ const CALLOUTS = [
     {id:'bubbles', label:'CO₂ in the tank', tag:'no oxygen', sw:SW.co2, dx:-130, dy:-30, when:M => cherryT.bubbles > .2,
       text:M => 'Sealed tanks fill with CO₂. Without oxygen, microbes switch to making lactic and acetic acid.'},
     {id:'microbes', label:'Starter cultures', tag:'yeast · LAB', sw:SW.microbe, dx:150, dy:-30, when:M => cherryT.microbes > .3,
-      text:M => 'Added yeasts and lactic acid bacteria eat fruit sugars, make acids and esters, and release enzymes that soften the bean’s walls.'},
+      text:M => 'Added yeasts and lactic acid bacteria eat fruit sugars, make acids and esters. Their enzymes may also loosen the outer tissue.'},
     {id:'fruit', label:'Added fruit', tag:'co-ferment', sw:SW.fruit, dx:-140, dy:40, when:M => cherryT.fruit > .3,
       text:M => 'Fruit added to the tank brings its own sugars and aroma compounds into the fermentation.'},
   ],
@@ -555,9 +585,9 @@ const CALLOUTS = [
     {id:'cavity', label:'Cavity', tag:'the gap', sw:SW.cavity, dx:-170, dy:50,
       text:M => 'The space inside each cell, where everything soluble lives. Water has to get in here.'},
     {id:'lipid', label:'Oils', tag:'slow', sw:SW.lipid, dx:-40, dy:110,
-      text:M => M.oil > .3 ? 'Oils are migrating out of broken cells toward the surface.' : 'Lipids carry body and aroma and dissolve slowly. Bourbon descendants like Chandragiri make plenty.'},
+      text:M => M.oil > .3 ? 'Oils are migrating out of broken cells toward the surface.' : 'Lipids carry body and aroma and barely dissolve in water. Arabica holds about 15% oil, robusta about 10%. Paper filters trap most of it.'},
     {id:'sugar', label:'Sugars', tag:'sucrose · caramel', sw:SW.sugar, dx:160, dy:90,
-      text:M => M.roastN > .6 ? 'Most sugars are now caramelised or burnt.' : 'Plant sucrose plus fruit sugars from processing. They dissolve almost instantly.'},
+      text:M => M.roastN > .6 ? 'Most sugars are now caramelised or burnt.' : 'Arabica green beans hold about 6–9% sucrose. It dissolves instantly, but roasting breaks most of it down into caramel, acids and melanoidins.'},
     {id:'acid', label:'Acids', tag:'fast', sw:SW.acid, dx:170, dy:-20,
       text:M => 'Mix here: ' + topAcids(M).map(a => `<b>${a.name.toLowerCase()}</b>`).join(', ') + '. Acids dissolve first and taste bright.'},
     {id:'co2', label:'CO₂', tag:'trapped gas', sw:SW.co2, dx:60, dy:-150, when:M => M.co2 > .25,
@@ -587,7 +617,7 @@ function reading(M){
   if (L === 1) return {title:dWord, lead:`At <b>${state.altitude} MASL</b> ${M.altN < .33 ? 'warm nights mean fast growth and stretched cells' : M.altN < .6 ? 'growth is moderate' : 'cold nights slow growth and pack the cells tight'}, and ${rWord}.`,
     meters:[['Density',M.density],['Porosity',M.porosity],['Fines risk',M.fines],['Solubility',M.solubility]],
     tip: M.fines > .6 ? 'Lots of fines: grind coarser, pour gently.' : M.density > .6 && M.roastN < .4 ? 'Dense and tight: grind finer, use hotter water.' : 'Balanced structure: a standard recipe works.',
-    more:'Think rye bread versus baguette. High-grown beans are dense like rye, low-grown beans are airy like a baguette. Roasting then dries, expands and cracks the structure, and the darker it goes the more brittle it gets.'};
+    more:'Think rye bread versus baguette: high-grown beans are dense, low-grown beans airy. Altitude is a proxy for temperature, so latitude matters too: 1,000 m in India or Brazil is warmer than 1,000 m in Kenya. Roasting then dries, expands and cracks the structure, and the darker it goes the more brittle it gets.'};
   const top = topAcids(M);
   return {title:'What sits in the gaps', lead:`Walls are <b>${M.cell.wall > .04 ? 'thick' : M.cell.wall > .028 ? 'medium' : 'thin'}</b>${P.weak > .3 ? ', weakened by fermentation' : ''}. Leading acids: <b>${top.map(a => a.name.toLowerCase()).join(', ')}</b>.`,
     meters:[['Acidity',M.acidity],['Sweetness',M.sweetness],['Body',M.body],['Aroma',clamp(M.esters + M.smoke*.5)]],
@@ -597,7 +627,7 @@ function reading(M){
 function renderReading(){
   const R = reading(M), meta = LAYER_META[state.layer];
   const sel = state.selected && currentCallouts().find(c => c.id === state.selected);
-  let html = `<div class="eyebrow"><span>${meta.eyebrow}${sel ? ' · ' + labelOf(sel) : ''}</span>${sel ? '<button type="button" id="back">← Overview</button>' : ''}</div>`;
+  let html = `<div class="eyebrow"><span>${meta.eyebrow}${sel ? ' · ' + labelOf(sel) : ''}</span><span class="tools">${sel ? '<button type="button" id="back">← Overview</button>' : ''}<button type="button" id="hide-notes" aria-label="Hide notes">Hide ✕</button></span></div>`;
   if (sel){
     html += `<h2>${labelOf(sel)}</h2><p class="lead">${sel.text(M)}</p>`;
   } else {
@@ -611,8 +641,15 @@ function renderReading(){
   el.innerHTML = html;
   if (open && el.querySelector('details.more')) el.querySelector('details.more').open = true;
   el.querySelector('#back')?.addEventListener('click', () => selectCallout(null));
+  el.querySelector('#hide-notes').addEventListener('click', () => setNotes(false));
   el.querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', () => selectCallout(b.dataset.c)));
 }
+function setNotes(show){
+  $('.reading').hidden = !show; $('#show-notes').hidden = show;
+  try { localStorage.setItem('bs-notes', show ? '1' : '0'); } catch (e) {}
+  if (window.__layout) window.__layout();
+}
+$('#show-notes').addEventListener('click', () => setNotes(true));
 const labelOf = c => typeof c.label === 'function' ? c.label(M) : c.label;
 function selectCallout(id){ state.selected = state.selected === id ? null : id; renderReading(); liveCallouts.forEach(o => o.el.classList.toggle('active', o.c.id === state.selected)); }
 
@@ -657,9 +694,9 @@ function renderRecipe(){
    ===================================================================== */
 let toastTimer = 0;
 function showToast(kind, prev){
-  const keys = [['Density','density'],['Porosity','porosity'],['Solubility','solubility'],['Fines risk','fines'],['Acidity','acidity'],['Sweetness','sweetness'],['Body','body']];
+  const keys = [['CO₂','co2'],['Density','density'],['Porosity','porosity'],['Solubility','solubility'],['Fines risk','fines'],['Acidity','acidity'],['Sweetness','sweetness'],['Body','body']];
   const ds = keys.map(([n,k]) => ({n, a:prev[k], b:M[k]})).filter(d => Math.abs(d.b - d.a) > .02).sort((x,y) => Math.abs(y.b - y.a) - Math.abs(x.b - x.a)).slice(0, 3);
-  const what = kind === 'altitude' ? `Altitude ${state.altitude} m` : kind === 'process' ? M.P.name : kind === 'roast' ? `Agtron ${state.agtron}` : kind === 'varietal' ? 'Varietal mix' : `Dose ${state.dose} g`;
+  const what = kind === 'altitude' ? `Altitude ${state.altitude} m` : kind === 'process' ? M.P.name : kind === 'roast' ? `Agtron ${state.agtron}` : kind === 'varietal' ? 'Varietal mix' : kind === 'days' ? `Roasted ${state.days} days ago` : `Dose ${state.dose} g`;
   const r = M.recipe, pr = prev.recipe;
   const rec = [];
   if (r.tLo !== pr.tLo) rec.push(`<span class="delta">Temp <b class="${r.tLo > pr.tLo ? 'up' : 'dn'}">${r.tLo}–${r.tHi}°</b></span>`);
@@ -1476,6 +1513,7 @@ addEventListener('keydown', e => {
   if (e.target.matches('input, select, textarea')) return;
   if (e.key >= '1' && e.key <= '3') goTo(+e.key - 1);
   else if (e.key === 'r' || e.key === 'R') resetView();
+  else if (e.key === 'h' || e.key === 'H') setNotes($('.reading').hidden);
   else if ((e.key === 'x' || e.key === 'X') && state.layer === 0) setCherryView(state.cherryView === 'stack' ? 'cut' : 'stack');
   else if (e.key === 'Escape' && state.selected) selectCallout(null);
 });
@@ -1565,16 +1603,19 @@ function layout(){
   const nav = $('.tabs').getBoundingClientRect();
   if (isBig()){
     const side = $('.console').getBoundingClientRect(), rec = $('.recipe').getBoundingClientRect(), rd = $('.reading').getBoundingClientRect();
-    insets = {l:side.right - r.left, r:r.right - rec.left, t:nav.bottom - r.top, b:r.bottom - rd.top};
+    insets = {l:side.right - r.left, r:r.right - rec.left, t:nav.bottom - r.top, b:$('.reading').hidden ? 0 : r.bottom - rd.top};
   } else insets = {l:0, r:0, t:nav.bottom - r.top, b:0};
   const cx = (insets.l + (W - insets.r)) / 2, cy = (insets.t + (H - insets.b)) / 2;
   camera.setViewOffset(W, H, W/2 - cx, H/2 - cy, W, H); camera.updateProjectionMatrix();
   scalebarEl.style.left = (insets.l + 18) + 'px'; scalebarEl.style.top = (H - insets.b - 46) + 'px';
   keysEl.style.right = (insets.r + 18) + 'px'; keysEl.style.top = (H - insets.b - 46) + 'px';
   const vt = $('#viewtoggle'); if (isBig()){ vt.style.left = (insets.l + 18) + 'px'; vt.style.top = '22px'; } else { vt.style.left = '12px'; vt.style.top = (H - 86) + 'px'; }
+  const sn = $('#show-notes'); sn.style.left = (cx - 50) + 'px'; sn.style.bottom = (isBig() ? 22 : 12) + 'px';
   toastEl.style.left = cx + 'px'; toastEl.style.bottom = (insets.b + 14) + 'px';
 }
 new ResizeObserver(layout).observe(stage);
+window.__layout = layout;
+try { if (localStorage.getItem('bs-notes') === '0') setNotes(false); } catch (e) {}
 addEventListener('resize', layout);
 
 let last = performance.now();
