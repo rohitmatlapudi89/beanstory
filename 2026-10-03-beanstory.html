@@ -845,7 +845,7 @@ function bagFacts(M){
     `Varietal(s): ${st.varietals.size ? [...st.varietals].join(', ') : 'unknown'}`,
     `Roasted ${st.days} days ago`,
     `Model estimates 0-100 (relative, not lab values): density ${p(M.density)}, porosity ${p(M.porosity)}, fines risk ${p(M.fines)}, solubility ${p(M.solubility)}, acidity ${p(M.acidity)}, sweetness ${p(M.sweetness)}, body ${p(M.body)}, CO2 ${p(M.co2)}`,
-    `Recipe the app suggests (Hario V60-02, paper filter): ${r.dose} g coffee, ${r.water} g water (1:${r.ratio}), ${r.tLo}-${r.tHi} °C, grind ${r.grindFull} on a ${r.grinderName} (${r.grindWord}), bloom ${r.pours[0].to} g for ${r.bloomS} s, ${r.style.toLowerCase()} with ${r.agitate} agitation, pours at ${r.pours.map(x => fmtT(x.t) + ' to ' + x.to + ' g').join(', ')}, finish about ${fmtT(r.drain)}.`,
+    `Brewing approach the app suggests for this bean on a V60: ${r.tLo}-${r.tHi} °C, ratio 1:${r.ratio}, ${r.grindWord.split(' · ')[0]} grind, ${r.style.toLowerCase()} with ${r.agitate} agitation.`,
   ].join('\n');
 }
 const NOTE_KEYS = ['Altitude', 'Process', 'Roast', 'Varietal', 'Freshness'];
@@ -861,7 +861,7 @@ Reply with only JSON in exactly this shape:
 Rules:
 - Each trait: ONE sentence, at most 22 words, cause then effect on the bean (e.g. what altitude with this origin's latitude does to cell structure; what the processing did inside the bean).
 - "cup": at most 25 words: likely flavour/texture and whether it tends to over- or under-extract.
-- "pour": exactly 3 steps, each at most 20 words, explaining HOW to pour this bean and why. Do not repeat numbers (grams, °C, clicks); the recipe panel shows them. Step 3 is what to change if sour vs bitter.
+- "pour": exactly 3 steps, each at most 20 words, explaining HOW to pour this bean and why. Talk only about the bean and how to pour it. Never mention grinders, grinder settings, clicks or exact numbers (grams, °C); the recipe panel covers those. Step 3 is what to change if sour vs bitter.
 - Plain words. Say "tends to" where evidence is uncertain (varietal flavour, processing effects). Nothing about the specific farm or roaster.`;
 }
 const AI = {fn:null, data:null, key:'', busy:false, ctl:null, err:'', tier:''};
@@ -915,7 +915,7 @@ function bindAsk(){
     item.querySelector('.q').textContent = q; $('#qa').prepend(item);
     const a = item.querySelector('.a');
     QA.push({role:'user', content:q});
-    const rules = `You answer questions from a home V60 brewer (not an expert) about one bag of coffee and the science behind it. Be accurate and brief (under 80 words, at most 4 short sentences or bullets), plain English, use "tends to" where evidence is uncertain. Context:\n${bagFacts(M)}`;
+    const rules = `You answer questions from a home V60 brewer (not an expert) about one bag of coffee and the science behind it. Do not mention specific grinders or grinder settings unless the user asks about grinders. Be accurate and brief (under 80 words, at most 4 short sentences or bullets), plain English, use "tends to" where evidence is uncertain. Context:\n${bagFacts(M)}`;
     try {
       const {text} = await AI.fn([{role:'user', content:rules}, ...QA.slice(-6)], {cache:false, modelTier:'quick', onText:({text}) => { a.innerHTML = md(text); }});
       QA.push({role:'assistant', content:text});
