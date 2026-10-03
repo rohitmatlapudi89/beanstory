@@ -133,6 +133,19 @@ select option,select optgroup{background:#121829;color:var(--ink)}
 .eyebrow{font-family:var(--f-mono);font-size:11px;color:var(--cyan);letter-spacing:.04em;display:flex;justify-content:space-between;gap:10px}
 .eyebrow button{border:0;background:none;padding:0;color:var(--mute);font:inherit}
 .eyebrow button:hover{color:#fff}
+.signin-pill{display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:6px 12px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--ink);border:1px solid rgba(127,227,255,.45);background:rgba(127,227,255,.08);text-shadow:none}
+.signin-pill:hover{background:rgba(127,227,255,.18)}
+.signin-pill[hidden],.modal[hidden]{display:none!important}
+.modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(5,8,15,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.modal-card{width:min(420px,100%);padding:24px 24px 20px;display:flex;flex-direction:column;gap:14px}
+.modal-card h2{margin:0;font-size:21px;font-weight:700;letter-spacing:-.2px;text-wrap:balance}
+.modal-card p{margin:0;font-size:14px;color:var(--soft);line-height:1.55}
+.modal-card ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:13.5px;color:var(--soft)}
+.modal-card li::marker{color:var(--cyan)}
+.modal-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.modal-actions .btn{padding:9px 14px;font-size:13.5px;text-decoration:none}
+.modal-card small{font-size:12px;color:var(--faint);line-height:1.45}
+.rh-tools{display:flex;gap:14px;align-items:center}
 .show-group{position:absolute;z-index:5;top:22px;right:24px;display:flex;gap:6px}
 .show-btn{padding:8px 14px;border-radius:12px;font-size:13px;font-weight:600;color:var(--ink);border:1px solid var(--line)}
 .show-btn:hover{border-color:var(--cyan)}
@@ -283,6 +296,7 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
     <div class="brand">
       <h1><span>From cherry to cup</span><b>Beanstory</b></h1>
       <p>Set what's on your bag. Watch the cherry, the bean and its cells change, and get a V60 recipe to match.</p>
+      <button type="button" class="signin-pill" id="signin-pill" hidden>✦ Sign in with Claude</button>
     </div>
     <div class="chips" id="chips"></div>
 
@@ -329,7 +343,7 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
 
   <aside class="notes glass" aria-label="Bean notes">
     <div class="recipe-head">
-      <div class="rh-row"><h2>Bean notes</h2><button type="button" class="rh-hide" id="hide-notes">Hide ✕</button></div>
+      <div class="rh-row"><h2>Bean notes</h2><span class="rh-tools"><button type="button" class="rh-hide" id="pdf-btn" title="Download a one-page PDF summary">PDF ↓</button><button type="button" class="rh-hide" id="hide-notes">Hide ✕</button></span></div>
       <div class="for" id="notes-for"></div>
     </div>
     <div class="recipe-body scroll">
@@ -354,6 +368,24 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
     </div>
     <div class="recipe-body scroll" id="recipe"></div>
   </aside>
+</div>
+
+<div class="modal" id="signin-modal" hidden role="dialog" aria-modal="true" aria-labelledby="signin-title">
+  <div class="modal-card glass">
+    <span class="label" style="color:var(--cyan)">Better with Claude</span>
+    <h2 id="signin-title">Get notes written for your exact bag</h2>
+    <p>Sign in with a free Claude account and Beanstory will:</p>
+    <ul>
+      <li>explain your bean's altitude, process, roast and varietal in plain words</li>
+      <li>tell you what that means for grinding and pouring</li>
+      <li>answer your follow-up questions about the bag</li>
+    </ul>
+    <div class="modal-actions">
+      <a class="btn primary" id="signin-go" href="https://claude.ai/login" target="_blank" rel="noopener">Sign in with Claude</a>
+      <button type="button" class="btn" id="signin-later">Continue without</button>
+    </div>
+    <small id="signin-hint">Everything else works without signing in. Notes are written on your own Claude account.</small>
+  </div>
 </div>
 
 <script type="importmap">
@@ -1026,6 +1058,7 @@ async function runAI(fresh){
     AI.key = key; AI.tier = tier;
   } catch (e){
     if (['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(e.code)){ AI.fn = null; $('#ask-sec').hidden = true; }
+    else if (e.code === 'session_expired'){ AI.fn = null; $('#ask-sec').hidden = true; offerSignin(); }
     else if (e.code === 'rate_limited') AI.err = 'Claude is busy or your usage limit was reached. Showing the built-in summary.';
     else if (e.code !== 'cancelled') AI.err = 'Claude could not finish this time. Showing the built-in summary.';
   } finally { AI.busy = false; renderNotes(); }
@@ -1052,12 +1085,137 @@ function bindAsk(){
   });
 }
 bindAsk();
+/* =====================================================================
+   ONE-PAGE PDF SUMMARY
+   ===================================================================== */
+const JSPDF_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+function loadJsPDF(){
+  if (window.jspdf) return Promise.resolve(window.jspdf.jsPDF);
+  return new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = JSPDF_URL; sc.onload = () => res(window.jspdf.jsPDF); sc.onerror = rej; document.head.appendChild(sc); });
+}
+// The built-in PDF fonts cover Latin-1 only: map the few symbols we use
+const pdfText = t => String(t).replace(/<[^>]+>/g, '').replace(/₂/g, '2').replace(/→/g, '->').replace(/[≈~]/g, '~').replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/…/g, '...').replace(/—/g, '-').replace(/✦|✕|↓|›/g, '').replace(/[^\x00-\xFF–]/g, '');
+function snapshot(){
+  try { composer.render(); return renderer.domElement.toDataURL('image/jpeg', .85); } catch (e) { return null; }
+}
+async function buildPDF(){
+  const jsPDF = await loadJsPDF();
+  const doc = new jsPDF({unit:'mm', format:'a4'});
+  const W = 210, H = 297, m = 12, r = M.recipe, notes = (AI.data && AI.key === bagKey()) ? AI.data : builtinData(M);
+  const navy = [11,15,26], cyan = [40,150,190], amber = [200,120,20], ink = [25,30,40], soft = [85,92,110], faint = [140,146,160];
+  const font = (sz, style='normal', col=ink) => { doc.setFont('helvetica', style); doc.setFontSize(sz); doc.setTextColor(...col); };
+  const text = (t, x, y, w, lh) => { const lines = doc.splitTextToSize(pdfText(t), w); doc.text(lines, x, y); return y + lines.length*lh; };
+  // header band
+  doc.setFillColor(...navy); doc.rect(0, 0, W, 30, 'F');
+  font(8, 'bold', [200,210,230]); doc.text('FROM CHERRY TO CUP', m, 11);
+  font(20, 'bold', [127,227,255]); doc.text('BEANSTORY', m, 20);
+  font(9, 'normal', [220,226,240]);
+  doc.text(pdfText(`${state.origin} · ${state.altitude} m · ${M.P.name} · Agtron ${state.agtron} · ${[...state.varietals].join(' + ') || 'varietal unknown'} · roasted ${state.days} days ago`), m, 26.5, {maxWidth:W - 2*m - 30});
+  font(7.5, 'normal', [160,170,190]); doc.text(new Date().toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}), W - m, 11, {align:'right'});
+  // left column
+  const LX = m, LW = 82, RX = m + LW + 8, RW = W - RX - m;
+  let y = 36;
+  const img = snapshot();
+  if (img){ const c = renderer.domElement, ar = c.height / c.width, ih = Math.min(62, LW*ar); doc.addImage(img, 'JPEG', LX, y, ih/ar > LW ? LW : ih/ar, ih); y += ih + 2;
+    font(6.5, 'normal', faint); doc.text(pdfText(LAYER_META[state.layer].eyebrow), LX, y + 2); y += 7; }
+  font(8, 'bold', cyan); doc.text('BEAN PROFILE', LX, y); y += 4.5;
+  [['Density', M.density], ['Porosity', M.porosity], ['Fines risk', M.fines], ['Solubility', M.solubility], ['Acidity', M.acidity], ['Sweetness', M.sweetness], ['Body', M.body], ['CO2', M.co2]].forEach(([k, v]) => {
+    font(7.5, 'normal', soft); doc.text(k, LX, y + 2.2);
+    doc.setFillColor(230,233,240); doc.rect(LX + 22, y, LW - 32, 2.6, 'F'); doc.setFillColor(...cyan); doc.rect(LX + 22, y, (LW - 32)*clamp(v), 2.6, 'F');
+    font(7.5, 'bold', ink); doc.text(String(pct(v)), LX + LW, y + 2.2, {align:'right'}); y += 4.6;
+  });
+  y += 3; font(8, 'bold', cyan); doc.text('ONE CELL, BY SHARE', LX, y); y += 3.5;
+  let bx = LX; COMP.forEach(c => { const w = LW*M.comp[c.k]/100; const hx = c.css.replace('#',''); doc.setFillColor(parseInt(hx.slice(0,2),16), parseInt(hx.slice(2,4),16), parseInt(hx.slice(4,6),16)); doc.rect(bx, y, w, 4, 'F'); bx += w; });
+  doc.setDrawColor(200,204,214); doc.setLineWidth(.15); doc.rect(LX, y, LW, 4); y += 7;
+  COMP.forEach((c, i) => { const col = i % 2, row = Math.floor(i/2), x = LX + col*(LW/2), yy = y + row*4.2; const hx = c.css.replace('#','');
+    doc.setFillColor(parseInt(hx.slice(0,2),16), parseInt(hx.slice(2,4),16), parseInt(hx.slice(4,6),16)); doc.rect(x, yy - 2.3, 2.4, 2.4, 'F'); doc.setDrawColor(190,194,204); doc.rect(x, yy - 2.3, 2.4, 2.4);
+    font(7, 'normal', soft); doc.text(pdfText(c.name), x + 3.6, yy); font(7, 'bold', ink); doc.text(pdfText(pct2(M.comp[c.k])), x + LW/2 - 3, yy, {align:'right'}); });
+  y += Math.ceil(COMP.length/2)*4.2 + 2;
+  // right column: notes
+  let ry = 36;
+  font(8, 'bold', cyan); doc.text('ABOUT THIS BEAN', RX, ry); ry += 5;
+  notes.traits.forEach(([k, what, means]) => {
+    font(7, 'bold', cyan); doc.text(k.toUpperCase(), RX, ry);
+    font(8.2, 'normal', ink); let ny = text(what, RX + 20, ry, RW - 20, 3.5);
+    if (means){ font(7.6, 'normal', soft); doc.setDrawColor(...amber); doc.setLineWidth(.5); const sy = ny - 1.8; ny = text(means, RX + 22.5, ny + .6, RW - 22.5, 3.3); doc.line(RX + 20.6, sy + .2, RX + 20.6, ny - 2.2); }
+    ry = ny + 2;
+  });
+  font(8, 'bold', amber); doc.text('IN THE CUP', RX, ry); ry += 4; font(8.2, 'normal', ink); ry = text(notes.cup, RX, ry, RW, 3.5) + 2.5;
+  font(8, 'bold', amber); doc.text('HOW TO POUR', RX, ry); ry += 4;
+  notes.pour.forEach((p, i) => { font(8.2, 'bold', amber); doc.text(`${i + 1}.`, RX, ry); font(8.2, 'normal', ink); ry = text(p, RX + 5, ry, RW - 5, 3.5) + 1.2; });
+  // recipe band
+  let ty = Math.max(y, ry) + 4;
+  doc.setDrawColor(215,219,228); doc.setLineWidth(.3); doc.line(m, ty - 2, W - m, ty - 2);
+  font(8, 'bold', cyan); doc.text('V60 RECIPE', m, ty + 2.5);
+  font(7, 'normal', faint); doc.text(pdfText(`${r.style} · ${r.agitate} agitation · ${r.grindWord}`), W - m, ty + 2.5, {align:'right'});
+  ty += 6;
+  const stats = [['Dose', `${r.dose} g`], ['Water', `${r.water} g (1:${r.ratio})`], ['Temp', `${r.tLo}–${r.tHi} °C`], ['Grind', `${r.grindFull}`], ['Bloom', `${r.pours[0].to} g · ${r.bloomS} s`], ['Total', `~${fmtT(r.drain)}`]];
+  const sw = (W - 2*m) / 6;
+  stats.forEach(([k, v], i) => { const x = m + i*sw; doc.setFillColor(244,246,250); doc.roundedRect(x, ty, sw - 2, 11, 1.2, 1.2, 'F');
+    font(6.5, 'normal', faint); doc.text(k.toUpperCase(), x + 2, ty + 3.8); font(8.6, 'bold', ink); doc.text(doc.splitTextToSize(pdfText(v), sw - 5)[0], x + 2, ty + 8.4); });
+  font(6.5, 'normal', faint); doc.text(pdfText(r.grinderName), m + 3*sw + 2, ty + 13.6);
+  ty += 17;
+  font(7, 'bold', faint); doc.text('TIME', m, ty); doc.text('TARGET', m + 14, ty); doc.text('POUR', m + 32, ty); doc.text('WHY', m + 110, ty); ty += 3.5;
+  [...r.pours, {t:r.drain, to:null, name:'Done', how:'Let it drain.', why:''}].forEach(p => {
+    font(7.8, 'bold', cyan); doc.text(p.to === null ? `~${fmtT(p.t)}` : fmtT(p.t), m, ty);
+    font(7.8, 'bold', ink); doc.text(p.to === null ? '' : `${p.to} g`, m + 14, ty);
+    font(7.8, 'normal', ink); const a = doc.splitTextToSize(pdfText(`${p.name}: ${p.how}`), 74); doc.text(a, m + 32, ty);
+    font(7.4, 'normal', soft); const b = doc.splitTextToSize(pdfText(p.why), W - m - (m + 110)); doc.text(b, m + 110, ty);
+    ty += Math.max(a.length, b.length)*3.3 + 1.4;
+  });
+  ty += 1.5; font(7.4, 'normal', soft); doc.text('If the cup tastes sour or thin: grind finer, go 1-2 °C hotter or swirl more.   Bitter or dry: grind coarser, drop 2 °C or pour gentler.', m, ty, {maxWidth:W - 2*m});
+  // footer
+  font(6.5, 'normal', faint);
+  doc.text(pdfText(`Made with Beanstory · ${ARTIFACT_URL} · Meters are relative scores and cell shares are estimates from published ranges, not lab values. ${notes === AI.data ? 'Bean notes written by Claude.' : ''}`), m, H - 8, {maxWidth:W - 2*m});
+  return doc;
+}
+async function downloadPDF(){
+  const btn = $('#pdf-btn'); btn.disabled = true; const old = btn.textContent; btn.textContent = 'Preparing…';
+  try {
+    const doc = await buildPDF();
+    const name = pdfText(`Beanstory - ${state.origin} ${M.P.name} Agtron ${state.agtron}.pdf`).replace(/[\/\\:*?"<>|]/g, '');
+    const blob = doc.output('blob');
+    const dl = window.claude?.use ? await window.claude.use('downloads') : null;
+    if (dl){
+      try { await dl.save({filename:name, data:blob}); }
+      catch (e){ if (!['declined','rate_limited'].includes(e.code)) showMsg('This view cannot save files. Open Beanstory in a browser tab to download the PDF.'); }
+    } else {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }
+  } catch (e){ showMsg('The PDF could not be created. Check your connection and try again.'); }
+  finally { btn.disabled = false; btn.textContent = old; }
+}
+function showMsg(t){ const el = $('#toast'); el.innerHTML = `<span class="what">${esc(t)}</span>`; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 4500); }
+$('#pdf-btn').addEventListener('click', downloadPDF);
+window.__buildPDF = buildPDF;
+
+// Sign in with Claude: offered once to visitors who can't get the Claude-written notes
+const ARTIFACT_URL = 'https://claude.ai/artifact/3969w5PfFhYuEE4vGUDut4';
+const inClaude = !!window.claude?.use;
+function offerSignin(){
+  if (AI.fn) return;
+  $('#signin-pill').hidden = false;
+  const go = $('#signin-go'), hint = $('#signin-hint');
+  if (inClaude){ go.href = 'https://claude.ai/login'; hint.textContent = 'After signing in, come back to this tab and reload. Everything else works without signing in.'; }
+  else { go.href = ARTIFACT_URL; go.textContent = 'Open in Claude'; hint.textContent = 'Opens Beanstory on claude.ai, where the notes are written on your own Claude account. Everything else works here without it.'; }
+  let seen = false; try { seen = localStorage.getItem('bs-signin-seen') === '1'; } catch (e) {}
+  if (!seen) setTimeout(() => { if (!AI.fn) openSignin(); }, 1200);
+}
+function openSignin(){ $('#signin-modal').hidden = false; $('#signin-go').focus(); }
+function closeSignin(){ $('#signin-modal').hidden = true; try { localStorage.setItem('bs-signin-seen', '1'); } catch (e) {} $('#signin-pill').focus(); }
+$('#signin-pill').addEventListener('click', openSignin);
+$('#signin-later').addEventListener('click', closeSignin);
+$('#signin-go').addEventListener('click', () => { try { localStorage.setItem('bs-signin-seen', '1'); } catch (e) {} setTimeout(() => $('#signin-modal').hidden = true, 300); });
+$('#signin-modal').addEventListener('click', e => { if (e.target.id === 'signin-modal') closeSignin(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#signin-modal').hidden) closeSignin(); });
+if (!inClaude) offerSignin();
 if (window.claude?.use){
   window.claude.use('sample').then(fn => {
-    if (!fn) return;
+    if (!fn){ offerSignin(); return; }
+    $('#signin-pill').hidden = true;
     AI.fn = fn; $('#ask-sec').hidden = false; renderNotes();
     runAI(false);            // one write-up at load; cached for a day for the same bag
-  }).catch(() => {});
+  }).catch(() => offerSignin());
 }
 
 const labelOf = c => typeof c.label === 'function' ? c.label(M) : c.label;

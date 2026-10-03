@@ -36,6 +36,7 @@ Beanstory is an interactive 3D explainer for home pour-over brewers. Enter what'
 - **Bean notes:** the current layer explained, then a plain-language summary of the bag. For altitude, process, roast, varietal and freshness it gives *what it is* and *what it means* (brittleness, fines, solubility), followed by a three-step pouring guide. On claude.ai the summary is written live by Claude, and an **Ask Claude** box answers follow-up questions. Elsewhere, a built-in summary is used.
 - **V60 recipe:** temperature, ratio, bloom size and length, number of pours, agitation, pour timeline and total time, all derived from the bag. Grind settings are converted for 9 grinders (Timemore, Comandante, 1Zpresso, Kingrinder, Baratza, Fellow) or given as a target particle size.
 - **What changed:** after every tweak a small toast shows which properties moved, for example *Density 23 → 63 · Temp 97–98° · Pours 5*.
+- **One-page PDF:** the *PDF ↓* button in the notes panel saves an A4 summary of the current setting: a snapshot of the 3D view, the bean profile, the cell composition, the bean notes and the full V60 recipe.
 - **Clickable labels** on every model, plus keyboard shortcuts: `1`–`4` layers, `X` cherry view, `H` notes, `V` recipe, `R` reset view.
 - **Works on phones:** the layout stacks on narrow screens.
 
@@ -59,6 +60,8 @@ To host it on **GitHub Pages**, go to *Settings → Pages* and deploy from this 
 ### Claude features
 
 The live notes and **Ask Claude** box use the claude.ai artifact *sample* capability. They only run when the page is opened as a Claude artifact, on the viewer's own Claude account, after a one-time permission prompt. Calls use the lightest ("quick") tier, ask for short, structured answers, and are cached for 24 hours per bag. Everywhere else the page falls back to the built-in summary, and everything else works the same.
+
+Visitors who can't get the Claude-written notes (signed out, or viewing outside claude.ai) see a one-time *Sign in with Claude* prompt; after closing it, a small button under the title brings it back.
 
 ## How the model works
 
