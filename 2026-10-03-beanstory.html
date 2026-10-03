@@ -163,6 +163,13 @@ select option,select optgroup{background:#121829;color:var(--ink)}
 .qa{display:flex;flex-direction:column;gap:10px}
 .qa .q{font-size:13px;color:#fff;font-weight:600}
 .qa .a{font-size:13.5px;color:var(--soft);line-height:1.55}
+.compbar{display:flex;height:14px;border-radius:7px;overflow:hidden;gap:1px;background:var(--line)}
+.compbar span{display:block;height:100%;transition:width .5s}
+.complist{display:flex;flex-direction:column;gap:5px}
+.complist div{display:grid;grid-template-columns:10px 1fr auto 44px;gap:8px;align-items:baseline;font-size:12.5px;color:var(--soft)}
+.complist i{width:9px;height:9px;border-radius:2px;align-self:center}
+.complist small{font-size:11px;color:var(--faint)}
+.complist b{font-family:var(--f-mono);font-weight:400;color:#fff;text-align:right}
 .reading-title{margin:0;font-size:17px;font-weight:700;line-height:1.25;text-wrap:balance}
 .lead{margin:0;font-size:14.5px;color:var(--soft);line-height:1.6;max-width:62ch;text-wrap:pretty}
 .lead b{color:#fff;font-weight:600}
@@ -257,12 +264,13 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
       <button class="tab" role="tab" data-layer="0" aria-selected="true">Cherry<small>15 mm</small></button>
       <button class="tab" role="tab" data-layer="1" aria-selected="false">Bean<small>10 mm</small></button>
       <button class="tab" role="tab" data-layer="2" aria-selected="false">Chemistry<small>40 µm</small></button>
+      <button class="tab" role="tab" data-layer="3" aria-selected="false">Cell<small>1 cell</small></button>
     </nav>
     <div class="viewtoggle glass" id="viewtoggle" role="group" aria-label="Cherry view"><button type="button" data-v="cut" aria-pressed="true">Cut open</button><button type="button" data-v="stack" aria-pressed="false">Exploded</button></div>
     <div class="toast glass" id="toast" aria-live="polite"></div>
     <div class="show-group"><button type="button" class="show-btn glass" id="show-notes" hidden>Bean notes ›</button><button type="button" class="show-btn glass" id="show-recipe" hidden>V60 recipe ›</button></div>
     <div class="scalebar" id="scalebar"><span id="scale-label">5 mm</span><div class="bar" id="scale-bar" style="width:80px"></div></div>
-    <div class="keys" id="keys">drag to orbit · scroll to zoom<br><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> layers · <kbd>R</kbd> reset · <kbd>X</kbd> cherry view · <kbd>H</kbd> notes · <kbd>V</kbd> recipe</div>
+    <div class="keys" id="keys">drag to orbit · scroll to zoom<br><kbd>1</kbd>–<kbd>4</kbd> layers · <kbd>R</kbd> reset · <kbd>X</kbd> cherry view · <kbd>H</kbd> notes · <kbd>V</kbd> recipe</div>
   </div>
 
   <div class="side">
@@ -515,8 +523,46 @@ function model(st){
   };
   const M = {st, P, prim, vs, effAlt, altN, roastN, fresh, density, porosity, solubility, fines, acidity, sweetness, body, co2, acids, sugars, lipids, esters, smoke, oil, mel, bean, cell};
   M.recipe = recipe(M);
+  M.comp = composition(M);
   return M;
 }
+
+/* ---------- single-cell composition ----------
+   Rough shares of roasted arabica dry mass (Clarke & Vitzthum; Illy & Viani; Farah 2012):
+   cell-wall polysaccharides ~45-50 %, lipids ~15 % (robusta ~10), melanoidins 15-30 % rising with roast,
+   sucrose 6-9 % green and mostly destroyed by roasting, chlorogenic acids ~6 % green falling to ~1-3 %,
+   other organic acids ~2-3 %, caffeine ~1.2 % (robusta ~2.2), CO2 ~1-2 % fresh, proteins and other. */
+function composition(M){
+  const rob = M.vs.some(v => v.robusta) ? M.vs.filter(v => v.robusta).length / M.vs.length : 0, rN = M.roastN;
+  const sugarGreen = 6 + 2.5*M.sugars + 1.2*M.P.fruit - 3*rob;
+  const raw = {
+    walls: 46 + 5*M.density - 4*rN - 2*M.P.weak,
+    lipids: (15 + 4*(M.lipids - .55)) * (1 - .35*rob),
+    melanoidins: 9 + 20*rN,
+    sugars: Math.max(.1, sugarGreen * Math.exp(-3.4*rN)),
+    cga: 6.5*(1 + .7*rob) * Math.pow(1 - rN, 1.6) + .4,
+    acids: 1.2 + 3.2*(M.acids.citric + M.acids.malic + M.acids.phosphoric*.5 + M.acids.lactic + M.acids.acetic*.7) / 2.4 + 1.6*M.acids.quinic,
+    co2: (0.5 + 1.6*rN) * (.35 + .65*M.fresh),
+    caffeine: 1.2 + 1*rob,
+    other: 0,
+  };
+  const sum = Object.values(raw).reduce((a, b) => a + b, 0);
+  raw.other = Math.max(4, 100 - sum + 8);
+  const tot = Object.values(raw).reduce((a, b) => a + b, 0);
+  const out = {}; for (const k in raw) out[k] = raw[k] / tot * 100;
+  return out;
+}
+const COMP = [
+  {k:'walls', name:'Cell walls', css:'#c99a6b', note:'insoluble'},
+  {k:'lipids', name:'Oils', css:'#ffb454', note:'barely soluble'},
+  {k:'melanoidins', name:'Melanoidins', css:'#9a5a35', note:'roast browning'},
+  {k:'sugars', name:'Sugars', css:'#f6e2bd', note:'dissolve fast'},
+  {k:'cga', name:'Chlorogenic acids', css:'#7ff0c0', note:'bitter-astringent'},
+  {k:'acids', name:'Fruit & other acids', css:'#ffd84a', note:'brightness'},
+  {k:'co2', name:'CO₂', css:'#bfe3ff', note:'bloom'},
+  {k:'caffeine', name:'Caffeine', css:'#ffffff', note:'bitter'},
+  {k:'other', name:'Proteins & other', css:'#8c95ad', note:'minerals, water'},
+];
 
 /* ---------- recipe rules ----------
    Temperature: light roasts 94–99 °C, medium 90–94, dark 85–90 (mainstream specialty guidance; Hoffmann, SCA).
@@ -702,6 +748,21 @@ const CALLOUTS = [
       text:M => M.smoke > .4 ? 'At dark roasts the aroma turns smoky and roasty.' : 'Fruity volatile compounds that leave the bean almost instantly.'},
   ],
 ];
+CALLOUTS.push([
+  {id:'c_wall', label:'Cell wall', tag:M => pct2(M.comp.walls), sw:'#c99a6b', dx:-170, dy:-90,
+    text:M => `Insoluble cellulose and hemicellulose, about <b>${pct2(M.comp.walls)}</b> of the bean. ${M.cell.wall > .04 ? 'Thick, strong walls here: they fracture cleanly with few fines and slow water down.' : M.cell.wall > .028 ? 'Medium walls.' : 'Thin walls here: they shatter into fines and let water in fast.'}${M.cell.rupture > .12 ? ' Some walls are cracked by roasting or fermentation.' : ''}`},
+  {id:'c_lipid', label:'Oils', tag:M => pct2(M.comp.lipids), sw:'#ffb454', dx:-160, dy:60,
+    text:M => `About <b>${pct2(M.comp.lipids)}</b>. Oils carry body and aroma but hardly dissolve; paper filters hold most of them back.${M.oil > .3 ? ' At this roast they are migrating out through cracked walls.' : ''}`},
+  {id:'c_sugar', label:'Sugars', tag:M => pct2(M.comp.sugars), sw:'#f6e2bd', dx:160, dy:-110,
+    text:M => `About <b>${pct2(M.comp.sugars)}</b> left. Green arabica holds 6–9% sucrose; roasting turns most of it into caramel, acids and melanoidins. What remains dissolves almost instantly.`},
+  {id:'c_acid', label:'Acids', tag:M => pct2(M.comp.acids + M.comp.cga), sw:'#ffd84a', dx:170, dy:-40,
+    text:M => `Chlorogenic acids <b>${pct2(M.comp.cga)}</b> (astringent, break down with roast) plus fruit and other acids <b>${pct2(M.comp.acids)}</b>, led by ${topAcids(M).map(a => a.name.toLowerCase()).join(', ')}. Acids dissolve first.`},
+  {id:'c_co2', label:'CO₂', tag:M => pct2(M.comp.co2), sw:'#bfe3ff', dx:150, dy:30,
+    text:M => `About <b>${pct2(M.comp.co2)}</b> by mass. Darker and fresher means more gas, which pushes water away in the bloom.`},
+  {id:'c_mel', label:'Melanoidins', tag:M => pct2(M.comp.melanoidins), sw:'#b06a3c', dx:160, dy:100,
+    text:M => `About <b>${pct2(M.comp.melanoidins)}</b>. Brown Maillard polymers built during roasting: colour, body and roasty bitterness. They grow steadily with roast degree.`},
+]);
+const pct2 = v => (v < 1 ? v.toFixed(1) : Math.round(v)) + '%';
 function currentCallouts(){ return state.layer === 0 && state.cherryView === 'stack' ? CALLOUTS_STACK : CALLOUTS[state.layer]; }
 function topAcids(M){ return ACIDS.map(a => ({...a, v:M.acids[a.k]})).sort((a,b) => b.v - a.v).slice(0, 3); }
 
@@ -709,6 +770,7 @@ const LAYER_META = [
   {eyebrow:'Layer 1 · Coffee cherry', unit:'mm', perWorld:7.5},
   {eyebrow:'Layer 2 · Roasted bean, cut open', unit:'mm', perWorld:5},
   {eyebrow:'Layer 3 · Cells and chemistry', unit:'µm', perWorld:50},
+  {eyebrow:'Layer 4 · One cell, by share', unit:'µm', perWorld:15},
 ];
 function reading(M){
   const L = state.layer, P = M.P;
@@ -722,6 +784,12 @@ function reading(M){
     meters:[['Density',M.density],['Porosity',M.porosity],['Fines risk',M.fines],['Solubility',M.solubility]],
     tip: M.fines > .6 ? 'Lots of fines: grind coarser, pour gently.' : M.density > .6 && M.roastN < .4 ? 'Dense and tight: grind finer, use hotter water.' : 'Balanced structure: a standard recipe works.',
     more:'Think rye bread versus baguette: high-grown beans are dense, low-grown beans airy. Altitude is a proxy for temperature, so latitude matters too: 1,000 m in India or Brazil is warmer than 1,000 m in Kenya. Roasting then dries, expands and cracks the structure, and the darker it goes the more brittle it gets.'};
+  if (L === 3){
+    const solubleNow = M.comp.sugars + M.comp.acids + M.comp.cga + M.comp.caffeine;
+    return {title:'One cell, by share', comp:true,
+      lead:`Walls take <b>${pct2(M.comp.walls)}</b> and are ${M.cell.wall > .04 ? 'thick' : M.cell.wall > .028 ? 'medium' : 'thin'}${M.cell.rupture > .12 ? ', with cracks' : ''}. Of the rest, quick-dissolving sugars, acids and caffeine are <b>${pct2(solubleNow)}</b>; slow oils and melanoidins are <b>${pct2(M.comp.lipids + M.comp.melanoidins)}</b>.`,
+      meters:[['Wall thickness', clamp((M.cell.wall - .014) / .05)], ['Wall damage', clamp(M.cell.rupture*2.5)], ['Fast solubles', clamp(solubleNow / 20)], ['Gas', clamp(M.comp.co2 / 3)]]};
+  }
   const top = topAcids(M);
   return {title:'What sits in the gaps', lead:`Walls are <b>${M.cell.wall > .04 ? 'thick' : M.cell.wall > .028 ? 'medium' : 'thin'}</b>${P.weak > .3 ? ', weakened by fermentation' : ''}. Leading acids: <b>${top.map(a => a.name.toLowerCase()).join(', ')}</b>.`,
     meters:[['Acidity',M.acidity],['Sweetness',M.sweetness],['Body',M.body],['Aroma',clamp(M.esters + M.smoke*.5)]],
@@ -736,6 +804,11 @@ function renderReading(){
   else {
     html += `<h3 class="reading-title">${R.title}</h3><p class="lead">${R.lead}</p>`;
     html += `<div class="meters">${R.meters.map(([k,v]) => `<div class="meter"><div class="top"><span>${k}</span><b>${pct(clamp(v))}</b></div><div class="track"><span class="fill" style="width:${pct(clamp(v))}%"></span></div></div>`).join('')}</div>`;
+    if (R.comp){
+      html += `<div class="compbar" role="img" aria-label="Composition of one cell">${COMP.map(c => `<span style="width:${M.comp[c.k].toFixed(2)}%;background:${c.css}" title="${c.name} ${pct2(M.comp[c.k])}"></span>`).join('')}</div>`;
+      html += `<div class="complist">${COMP.map(c => `<div><i style="background:${c.css}"></i><span>${c.name}</span><small>${c.note}</small><b>${pct2(M.comp[c.k])}</b></div>`).join('')}</div>`;
+      html += `<div class="hint">Approximate shares of roasted-bean dry mass, from published ranges. Change the bag and watch them shift.</div>`;
+    }
     if (R.legend) html += `<div class="legend">${CALLOUTS[2].map(c => `<button type="button" data-c="${c.id}" style="--sw:${c.sw}"><i></i>${labelOf(c)}</button>`).join('')}</div>`;
     html += `<div class="hint">Click a label in the 3D view to read about it here.</div>`;
   }
@@ -1776,6 +1849,86 @@ function buildCells(M){
 }
 
 /* =====================================================================
+   LAYER 4: ONE CELL, CUT OPEN, CONTENTS IN PROPORTION
+   ===================================================================== */
+const one = new THREE.Group(); scene.add(one); one.position.y = floorY + .02;
+const ONE = {R:1.35, H:1.7, N:300};
+const oneMat = {
+  wall: new THREE.MeshPhysicalMaterial({color:0xc99a6b, roughness:.7, sheen:.4, sheenColor:new THREE.Color(0xffe0b0), normalMap:veinNormal, normalScale:new THREE.Vector2(.6, .6), envMapIntensity:.6}),
+  floor: new THREE.MeshStandardMaterial({color:0x3a2618, roughness:.9}),
+  caff: new THREE.MeshStandardMaterial({color:0xf4f6ff, roughness:.3, emissive:0x404050, emissiveIntensity:.3}),
+  other: new THREE.MeshStandardMaterial({color:0x8c95ad, roughness:.8}),
+  cga: new THREE.MeshBasicMaterial({color:0x7ff0c0, toneMapped:false}),
+};
+const oneState = {group:null, anchors:{}, co2:[]};
+function buildOne(M){
+  if (oneState.group){ oneState.group.traverse(o => { if (o.isInstancedMesh) o.dispose(); }); one.remove(oneState.group); }
+  const G = new THREE.Group(), rnd = mulberry32(2024), t = .05 + M.cell.wall*3.2, R0 = ONE.R, H = ONE.H;
+  oneMat.wall.color.copy(agtronColor(Math.min(95, M.st.agtron + 12)));
+  oneMat.wall.roughness = .7 - M.oil*.45; oneMat.wall.clearcoat = M.oil;
+  // six walls; the two facing the camera are cut away so we can look in
+  const corners = []; for (let k = 0; k < 6; k++){ const a = Math.PI/6 + k*Math.PI/3; corners.push([R0*Math.cos(a), R0*Math.sin(a)]); }
+  const wallBoxes = [];
+  for (let k = 0; k < 6; k++){
+    const [ax, az] = corners[k], [bx, bz] = corners[(k+1)%6], mx = (ax+bx)/2, mz = (az+bz)/2;
+    if (mz > .5) continue;                                   // front walls removed (cutaway)
+    const len = Math.hypot(bx-ax, bz-az), ang = -Math.atan2(bz-az, bx-ax);
+    const cracked = M.cell.rupture > .12 && (k === 3 || (M.cell.rupture > .2 && k === 5));
+    const pieces = cracked ? [[0, .45], [.55, 1]] : [[0, 1]];
+    pieces.forEach(([u0, u1], pi) => {
+      const h = cracked && pi === 1 ? H*(1 - M.cell.rupture*1.6) : H;
+      const w = new THREE.Mesh(new THREE.BoxGeometry(len*(u1-u0) + t, h, t), oneMat.wall);
+      const uc = (u0 + u1)/2 - .5;
+      w.position.set(mx + (bx-ax)*uc, h/2, mz + (bz-az)*uc); w.rotation.y = ang; w.castShadow = w.receiveShadow = true;
+      G.add(w); wallBoxes.push(w);
+    });
+  }
+  // floor: a cut through the wall material
+  const fl = new THREE.Mesh(new THREE.CylinderGeometry(R0 + t*.6, R0 + t*.6, .06, 6, 1), oneMat.wall); fl.rotation.y = Math.PI/6; fl.position.y = -.03; fl.receiveShadow = true; G.add(fl);
+  // contents: N particles split by share of the non-wall mass
+  const keys = ['lipids','melanoidins','sugars','cga','acids','co2','caffeine','other'];
+  const contentTot = keys.reduce((a, k) => a + M.comp[k], 0);
+  const counts = {}; keys.forEach(k => counts[k] = Math.max(M.comp[k] > .05 ? 1 : 0, Math.round(ONE.N * M.comp[k] / contentTot)));
+  const inner = R0 - t*.6 - .12, o = new THREE.Object3D();
+  const spot = (r = rnd) => { for (;;){ const x = (r()*2 - 1)*inner, z = (r()*2 - 1)*inner; if (Math.abs(z) < inner*.866 && Math.abs(x)*.866 + Math.abs(z)*.5 < inner*.866) return [x, z]; } };
+  const kinds = {
+    lipids:{geo:cellGeo.sph, mat:cellMat.lipid, s:[.045, .085], y:M.oil > .3 ? [H*.6, H*.95] : [.08, H*.8], wall:true},
+    melanoidins:{geo:cellGeo.ico, mat:cellMat.mel, s:[.05, .09], y:[.05, H*.5]},
+    sugars:{geo:cellGeo.oct, mat:cellMat.sugar, s:[.05, .08], y:[.05, H*.7]},
+    cga:{geo:cellGeo.small, mat:oneMat.cga, s:[.03, .045], y:[.05, H*.85]},
+    acids:{geo:cellGeo.small, mat:cellMat.acid, s:[.03, .045], y:[.05, H*.85]},
+    co2:{geo:cellGeo.sph, mat:cellMat.co2, s:[.08, .16], y:[H*.35, H*.9]},
+    caffeine:{geo:new THREE.CylinderGeometry(.15, .15, 1, 6), mat:oneMat.caff, s:[.12, .2], y:[.05, H*.6], needle:true},
+    other:{geo:cellGeo.ico, mat:oneMat.other, s:[.025, .045], y:[.05, H*.6]},
+  };
+  const acidList = ACIDS.filter(a => a.k !== 'chlorogenic'), acidW = acidList.map(a => M.acids[a.k] + .001), acidSum = acidW.reduce((a, b) => a + b, 0);
+  const anchors = {};
+  keys.forEach((k, ki) => {
+    const K = kinds[k], n = counts[k]; if (!n) return;
+    const im = new THREE.InstancedMesh(K.geo, K.mat, n); im.castShadow = k !== 'co2';
+    const r2 = mulberry32(100 + ki*31);
+    for (let i = 0; i < n; i++){
+      let [x, z] = spot(r2);
+      if (K.wall){ const a = Math.atan2(z, x), rr = inner*(.8 + r2()*.2); x = Math.cos(a)*rr; z = Math.sin(a)*rr; }
+      const y = K.y[0] + r2()*(K.y[1] - K.y[0]), sc = K.s[0] + r2()*(K.s[1] - K.s[0]);
+      o.position.set(x, y, z); o.rotation.set(r2()*6, r2()*6, r2()*6);
+      if (K.needle) o.scale.set(sc*.25, sc, sc*.25); else o.scale.setScalar(sc);
+      o.updateMatrix(); im.setMatrixAt(i, o.matrix);
+      if (k === 'acids'){ let q = r2()*acidSum, j = 0; while (q > acidW[j] && j < acidW.length - 1){ q -= acidW[j]; j++; } im.setColorAt(i, new THREE.Color(acidList[j].css)); }
+      if (i === 0) anchors[k] = V3(x, y, z);
+    }
+    if (im.instanceColor) im.instanceColor.needsUpdate = true;
+    if (k === 'co2') oneState.co2 = {im, n};
+    G.add(im);
+  });
+  anchors.c_wall = V3(corners[3][0]*.5 + corners[4][0]*.5, H*.85, corners[3][1]*.5 + corners[4][1]*.5);
+  one.add(G);
+  oneState.group = G;
+  oneState.anchors = {c_wall:anchors.c_wall, c_lipid:anchors.lipids, c_sugar:anchors.sugars, c_acid:anchors.acids || anchors.cga, c_co2:anchors.co2, c_mel:anchors.melanoidins};
+}
+let oneDirty = true, lastOne = 0;
+
+/* =====================================================================
    APPLY MODEL -> 3D (smoothly)
    ===================================================================== */
 let beanDirty = true, texDirty = true, cellsDirty = true, lastTex = 0, lastCells = 0;
@@ -1784,7 +1937,7 @@ window.__apply3D = () => {
   cherryTargets(M);
   const k = clamp(M.prim.size, .9, 1.15);
   if (Math.abs(k - cherryParts.k) > .001){ const e = cherryParts.front.half.position.x / 1.75; buildCherry(k); cherryParts.back.half.add(microbes.p, flows.p); cherryExplode(e); }
-  beanDirty = texDirty = cellsDirty = greenDirty = true;
+  beanDirty = texDirty = cellsDirty = greenDirty = oneDirty = true;
   refreshCallouts();
 };
 function step3D(now, dt){
@@ -1793,6 +1946,7 @@ function step3D(now, dt){
   if (state.layer === 1 && (moving || beanDirty)){ updateBeanGeometry(M); beanDirty = false; }
   if (state.layer === 0 && (moving || greenDirty)){ deformBean(greenBean, BP, greenColor); greenBean.grp.scale.setScalar(clamp(M.prim.size, .85, 1.25)); pcBeans.forEach(b => { deformBean(b, {...BP, scale:1}, greenColor); b.grp.scale.setScalar(clamp(M.prim.size, .85, 1.25)); }); greenDirty = false; }
   if (state.layer === 1 && texDirty && now - lastTex > 120){ updateBeanTextures(M); lastTex = now; texDirty = moving; }
+  if (state.layer === 3 && oneDirty && now - lastOne > 90){ buildOne(M); lastOne = now; oneDirty = false; refreshCallouts(); }
   if (state.layer === 2 && cellsDirty && now - lastCells > 110){ buildCells(M); lastCells = now; cellsDirty = false; buildCallouts(); }
 }
 
@@ -1803,13 +1957,14 @@ const REST = [
   {pos:V3(.75, .85, 7.6), target:V3(.6, .2, -.3), min:2.2, max:11},
   {pos:V3(0, 1, 8.6), target:V3(0, 0, -.2), min:1.6, max:13},
   {pos:V3(0, 6.6, 7.6), target:V3(0, -1, .35), min:2, max:15},
+  {pos:V3(0, 2.6, 6.2), target:V3(0, -.45, 0), min:2, max:12},
 ];
 const REST_STACK = {pos:V3(0, 4.4, 8.6), target:V3(0, .25, 0), min:3, max:14};
 const restFor = n => n === 0 && state.cherryView === 'stack' ? REST_STACK : REST[n];
 function applyVisibility(){
   const n = state.layer, cut = state.cherryView === 'cut';
   cherry.visible = n === 0 && cut; fx.visible = n === 0 && cut; stack.visible = n === 0 && !cut;
-  bean.visible = n === 1; cells.visible = n === 2;
+  bean.visible = n === 1; cells.visible = n === 2; one.visible = n === 3;
   $('#viewtoggle').hidden = n !== 0;
 }
 function setCherryView(v){
@@ -1825,17 +1980,19 @@ document.querySelectorAll('#viewtoggle button').forEach(b => b.addEventListener(
 function divePoint(layer){
   if (layer === 0) return state.cherryView === 'stack' ? SL.bean.obj.getWorldPosition(V3()) : cherry.localToWorld(V3(.28, 0, .05));
   if (layer === 1) return halfA.grp.localToWorld(V3(-.1, 0, .1));
-  return V3(0, floorY + .4, 0);
+  if (layer === 2) return V3(0, floorY + .4, 0);
+  return V3(0, floorY + .8, 0);
 }
 let arrivalT = 0;
 function showLayer(n){
   state.layer = n; state.selected = null;
   applyVisibility();
-  shadowCatch.visible = n !== 2;
+  shadowCatch.visible = n !== 2 && n !== 3;
   scene.environmentIntensity = n === 2 ? .55 : .8; key.intensity = n === 2 ? 2.6 : 2.2;
   document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', +b.dataset.layer === n));
   const R = restFor(n); controls.minDistance = R.min; controls.maxDistance = R.max;
   if (n === 1){ beanDirty = texDirty = true; lastTex = 0; }
+  if (n === 3 && (oneDirty || !oneState.group)){ buildOne(M); oneDirty = false; }
   if (n === 2 && (cellsDirty || !cellState.group)){ buildCells(M); cellsDirty = false; }
   buildCallouts(); renderReading();
   arrivalT = performance.now();
@@ -1882,7 +2039,7 @@ function stepTransition(now){
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => goTo(+b.dataset.layer)));
 addEventListener('keydown', e => {
   if (e.target.matches('input, select, textarea')) return;
-  if (e.key >= '1' && e.key <= '3') goTo(+e.key - 1);
+  if (e.key >= '1' && e.key <= '4') goTo(+e.key - 1);
   else if (e.key === 'r' || e.key === 'R') resetView();
   else if (e.key === 'h' || e.key === 'H') setNotes($('.notes').hidden);
   else if (e.key === 'v' || e.key === 'V') setRecipe($('.recipe').hidden);
@@ -1907,9 +2064,10 @@ function anchorWorld(layer, id){
     return cherryParts.back.half.localToWorld(cherryAnchor()[id].clone());
   }
   if (layer === 1){ const [g, v] = beanAnchor()[id]; return g.localToWorld(v.clone()); }
+  if (layer === 3){ const a = oneState.anchors[id]; return a ? one.localToWorld(a.clone()) : null; }
   const a = cellState.data && cellState.data.anchors[id]; return a ? cells.localToWorld(a.clone()) : null;
 }
-function activeCallouts(){ return currentCallouts().filter(c => !c.when || c.when(M)).filter(c => state.layer !== 2 || (cellState.data && cellState.data.anchors[c.id])); }
+function activeCallouts(){ return currentCallouts().filter(c => !c.when || c.when(M)).filter(c => state.layer === 3 ? !!oneState.anchors[c.id] : state.layer !== 2 || (cellState.data && cellState.data.anchors[c.id])); }
 function buildCallouts(){
   calloutsEl.innerHTML = ''; linesEl.innerHTML = '';
   const list = activeCallouts();
@@ -1917,7 +2075,7 @@ function buildCallouts(){
   liveCallouts = list.map(c => {
     const el = document.createElement('button');
     el.type = 'button'; el.className = 'callout'; el.style.setProperty('--sw', c.sw); el.style.opacity = 0;
-    el.innerHTML = `<i></i>${labelOf(c)}<small>${c.tag}</small>`;
+    el.innerHTML = `<i></i>${labelOf(c)}<small>${typeof c.tag === 'function' ? c.tag(M) : c.tag}</small>`;
     el.addEventListener('click', () => selectCallout(c.id));
     if (c.id === state.selected) el.classList.add('active');
     calloutsEl.appendChild(el);
@@ -1932,7 +2090,7 @@ function buildCallouts(){
 function refreshCallouts(){
   const list = activeCallouts(), key = state.layer + ':' + list.map(c => c.id).join(',');
   if (key !== calloutKey) buildCallouts();
-  else liveCallouts.forEach(o => o.el.innerHTML = `<i></i>${labelOf(o.c)}<small>${o.c.tag}</small>`);
+  else liveCallouts.forEach(o => o.el.innerHTML = `<i></i>${labelOf(o.c)}<small>${typeof o.c.tag === 'function' ? o.c.tag(M) : o.c.tag}</small>`);
 }
 function hideCallouts(){ liveCallouts.forEach(o => { o.el.style.opacity = 0; o.el.style.pointerEvents = 'none'; o.line.style.opacity = o.dot.style.opacity = o.ring.style.opacity = 0; }); }
 let insets = {l:0, r:0, t:0, b:0}, W = 1, H = 1;
@@ -2005,6 +2163,10 @@ function animate(now){
   const t = now / 1000, e = easeOut(clamp((now - arrivalT - 250) / 1500));
   if (state.layer === 0){ updateCherry(dt, t); if (state.cherryView === 'stack') updateStack(dt, t, e); else cherryExplode(e); }
   if (state.layer === 1) beanExplode(e);
+  if (state.layer === 3 && oneState.group){
+    oneState.group.scale.y = Math.max(.001, e);
+    const C = oneState.co2; if (C && C.im){ for (let i = 0; i < C.n; i++){ C.im.getMatrixAt(i, _m); _m.decompose(_p, _q, _s); _p.y += Math.sin(t*1.4 + i)*.0015; _m.compose(_p, _q, _s); C.im.setMatrixAt(i, _m); } C.im.instanceMatrix.needsUpdate = true; }
+  }
   if (state.layer === 2 && cellState.data){
     const D = cellState.data; cellState.group.scale.y = Math.max(.001, e);
     D.co2Base.forEach((b, i) => { D.ims.co2.getMatrixAt(i, _m); _m.decompose(_p, _q, _s); _p.set(b.x, b.y + Math.sin(t*1.3 + i)*.025, b.z); _m.compose(_p, _q, _s); D.ims.co2.setMatrixAt(i, _m); });
