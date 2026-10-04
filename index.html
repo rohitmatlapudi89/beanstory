@@ -62,6 +62,32 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .stat .v{display:block;font-family:var(--f-mono);font-size:16px;color:var(--cyan);line-height:1.25}
 
 .console{flex:1;min-height:0;display:flex;flex-direction:column}
+.bag-card{display:flex;flex-direction:column;gap:10px;padding:12px 12px 12px;border-radius:12px;border:1px solid rgba(127,227,255,.3);background:rgba(127,227,255,.05)}
+.bag-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.bag-head .label{color:var(--cyan)}
+.bag-head button{border:0;background:none;padding:0;font-family:var(--f-mono);font-size:11px;color:var(--mute)}
+.bag-head button:hover{color:#fff}
+.bag-card.collapsed .bag-body{display:none}
+.bag-body{display:flex;flex-direction:column;gap:9px}
+.bag-drop{display:flex;align-items:center;gap:10px;padding:10px;border:1px dashed var(--line2);border-radius:10px;cursor:pointer;font-size:13px;color:var(--soft)}
+.bag-drop.over,.bag-drop:hover{border-color:var(--cyan);color:#fff}
+.bag-drop[hidden]{display:none!important}
+.bag-drop img{width:44px;height:44px;object-fit:cover;border-radius:6px}
+.bag-drop input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.bag-drop .x{margin-left:auto;border:0;background:none;color:var(--mute);font-size:13px;padding:0 4px}
+.bag-body textarea{width:100%;min-height:58px;resize:vertical;background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;font:inherit;font-size:13px;color:var(--ink)}
+.bag-body textarea::placeholder{color:var(--faint)}
+.bag-status{font-size:12.5px;color:var(--soft);line-height:1.5;display:flex;flex-direction:column;gap:6px}
+.bag-status:empty{display:none}
+.bag-status.warn{color:var(--amber)}
+.bag-status p{margin:0}
+.bag-status ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.bag-found li{display:grid;grid-template-columns:70px 1fr;gap:6px}
+.bag-found span{font-family:var(--f-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--cyan);padding-top:2px}
+.bag-miss{color:var(--faint)}
+.bag-notes li{color:var(--mute);font-size:12px}
+.bag-notes li::before{content:"· "}
+.bag-status .btn{align-self:flex-start}
 .console-body{padding:18px 18px 20px;display:flex;flex-direction:column;gap:24px;min-height:0;flex:1}
 .field{display:flex;flex-direction:column;gap:10px}
 .field-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
@@ -302,6 +328,15 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
 
     <section class="console glass" aria-label="Your bag of coffee">
       <div class="console-body scroll">
+        <section class="bag-card" id="bag-card" aria-label="Fill settings from your bag">
+          <div class="bag-head"><span class="label">✦ Read my bag</span><button type="button" id="bag-toggle" aria-expanded="true" aria-controls="bag-body"><span id="bag-toggle-txt">Hide</span></button></div>
+          <div class="bag-body" id="bag-body">
+            <label class="bag-drop" id="bag-drop"><input type="file" id="bag-file" accept="image/*"><img id="bag-thumb" alt="Bag photo" hidden><span id="bag-drop-txt">Add a photo of the bag</span><button type="button" class="x" id="bag-clear-img" hidden aria-label="Remove photo">✕</button></label>
+            <textarea id="bag-text" placeholder="…or paste the product link and its description (origin, altitude, process, roast…)" aria-label="Product link or description"></textarea>
+            <button type="button" class="btn primary" id="bag-go">Fill settings with Claude</button>
+            <div class="bag-status" id="bag-status" aria-live="polite"></div>
+          </div>
+        </section>
         <div class="field">
           <div class="field-head"><label class="label" for="altitude">Altitude</label><span class="readout" id="alt-out"></span></div>
           <input type="range" id="altitude" min="600" max="2400" step="50" value="1000">
@@ -501,7 +536,7 @@ const $ = (s, el=document) => el.querySelector(s);
 const clamp = (v,a=0,b=1) => Math.min(b, Math.max(a, v));
 const lerp = (a,b,t) => a + (b - a) * t;
 const pct = v => Math.round(v * 100);
-const state = {cherryView:'cut', layer:0, altitude:1000, process:'cultured', agtron:65, varietals:new Set(['SL9','Chandragiri']), dose:15, days:14, origin:'India', grinder:(() => { try { return localStorage.getItem('bs-grinder') || 'c2'; } catch (e) { return 'c2'; } })(), selected:null};
+const state = {cherryView:'cut', layer:0, altitude:1000, process:'cultured', agtron:65, varietals:new Set(['SL9','Chandragiri']), dose:15, days:14, origin:'India', bagName:null, grinder:(() => { try { return localStorage.getItem('bs-grinder') || 'c2'; } catch (e) { return 'c2'; } })(), selected:null};
 
 function piece(pts, x){ if (x <= pts[0][0]) return pts[0][1]; for (let i = 1; i < pts.length; i++) if (x <= pts[i][0]){ const [x0,y0] = pts[i-1], [x1,y1] = pts[i]; return lerp(y0, y1, (x - x0) / (x1 - x0)); } return pts[pts.length-1][1]; }
 
@@ -1030,7 +1065,7 @@ function notesHTML(d){
   return `${rows}<div class="nhead">In the cup</div><p>${esc(d.cup)}</p><div class="nhead">How to pour</div><ol class="nsteps">${d.pour.map(x => `<li>${esc(x)}</li>`).join('')}</ol>`;
 }
 function renderNotes(){
-  $('#notes-for').textContent = `${state.origin} · ${state.altitude} m · ${M.P.name} · Agtron ${state.agtron}`;
+  $('#notes-for').textContent = `${state.bagName ? state.bagName + ' · ' : ''}${state.origin} · ${state.altitude} m · ${M.P.name} · Agtron ${state.agtron}`;
   const live = AI.data && AI.key === bagKey();
   const out = $('#ai-out'), src = $('#ai-src'), act = $('#ai-actions');
   if (AI.busy){ src.textContent = 'Claude (quick tier) is writing…'; src.className = 'src live'; act.innerHTML = '<button type="button" class="btn" id="ai-stop">Stop</button>'; $('#ai-stop').onclick = () => AI.ctl?.abort(); return; }
@@ -1110,7 +1145,7 @@ async function buildPDF(){
   font(8, 'bold', [200,210,230]); doc.text('FROM CHERRY TO CUP', m, 11);
   font(20, 'bold', [127,227,255]); doc.text('BEANSTORY', m, 20);
   font(9, 'normal', [220,226,240]);
-  doc.text(pdfText(`${state.origin} · ${state.altitude} m · ${M.P.name} · Agtron ${state.agtron} · ${[...state.varietals].join(' + ') || 'varietal unknown'} · roasted ${state.days} days ago`), m, 26.5, {maxWidth:W - 2*m - 30});
+  doc.text(pdfText(`${state.bagName ? state.bagName + ' · ' : ''}${state.origin} · ${state.altitude} m · ${M.P.name} · Agtron ${state.agtron} · ${[...state.varietals].join(' + ') || 'varietal unknown'} · roasted ${state.days} days ago`), m, 26.5, {maxWidth:W - 2*m - 30});
   font(7.5, 'normal', [160,170,190]); doc.text(new Date().toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}), W - m, 11, {align:'right'});
   // left column
   const LX = m, LW = 82, RX = m + LW + 8, RW = W - RX - m;
@@ -1189,6 +1224,102 @@ function showMsg(t){ const el = $('#toast'); el.innerHTML = `<span class="what">
 $('#pdf-btn').addEventListener('click', downloadPDF);
 window.__buildPDF = buildPDF;
 
+/* =====================================================================
+   READ MY BAG: fill the settings from a bag photo or a product link/description
+   ===================================================================== */
+const BAG = {img:null, prev:null, busy:false, ctl:null, imagesOK:false};
+function bagCollapse(c){
+  $('#bag-card').classList.toggle('collapsed', c); $('#bag-toggle').setAttribute('aria-expanded', !c); $('#bag-toggle-txt').textContent = c ? 'Show' : 'Hide';
+  try { localStorage.setItem('bs-bag-collapsed', c ? '1' : '0'); } catch (e) {}
+}
+$('#bag-toggle').addEventListener('click', () => bagCollapse(!$('#bag-card').classList.contains('collapsed')));
+try { if (localStorage.getItem('bs-bag-collapsed') === '1') bagCollapse(true); } catch (e) {}
+function bagStatus(html, cls=''){ const el = $('#bag-status'); el.className = 'bag-status ' + cls; el.innerHTML = html; }
+function setBagImage(file){
+  if (!file || !/^image\//.test(file.type)){ bagStatus('That file is not an image. Use a JPG, PNG or WebP photo of the bag.', 'warn'); return; }
+  BAG.img = file;
+  const url = URL.createObjectURL(file), t = $('#bag-thumb'); t.src = url; t.hidden = false; $('#bag-drop-txt').textContent = file.name; $('#bag-clear-img').hidden = false;
+  bagStatus('');
+}
+$('#bag-file').addEventListener('change', e => setBagImage(e.target.files[0]));
+const drop = $('#bag-drop');
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => setBagImage(e.dataTransfer.files[0]));
+$('#bag-clear-img').addEventListener('click', () => { BAG.img = null; $('#bag-thumb').hidden = true; $('#bag-file').value = ''; $('#bag-drop-txt').textContent = 'Add a photo of the bag'; $('#bag-clear-img').hidden = true; });
+document.addEventListener('paste', e => { const f = [...(e.clipboardData?.files || [])].find(f => /^image\//.test(f.type)); if (f && !$('#bag-card').classList.contains('collapsed')) setBagImage(f); });
+function bagPrompt(text){
+  const today = new Date().toISOString().slice(0, 10);
+  return `Read this coffee bag ${BAG.img ? '(photo attached)' : ''}${text ? ' and this product text' : ''} and extract the settings for a coffee app.
+${text ? `\nProduct text or link from the user:\n"""\n${text.slice(0, 6000)}\n"""\n` : ''}
+Today is ${today}.
+
+Reply with only JSON:
+{"roaster":string|null,"coffee":string|null,"origin":string|null,"altitude_m":number|null,"process":string|null,"agtron":number|null,"roast_level":"light"|"light-medium"|"medium"|"medium-dark"|"dark"|null,"varietals":[string],"roast_date":"YYYY-MM-DD"|null,"notes":[string]}
+
+Rules:
+- origin: pick exactly one of: ${ORIGINS.map(o => o[0]).join(', ')}. Use "Other / unknown" if the country is not listed.
+- altitude_m: metres above sea level; for a range use the midpoint; convert feet to metres.
+- process: pick exactly one id: ${PROCESSES.map(p => `${p.id} (${p.name})`).join(', ')}. Map synonyms sensibly (e.g. "fully washed" -> washed, "dry process" -> natural, "pulped natural" -> semiwashed, "yeast inoculated" -> cultured, "infused" -> coferment).
+- agtron only if a number is printed; otherwise roast_level from words like "light", "omni", "filter roast" (light-medium), "espresso roast" (medium-dark).
+- varietals: names exactly from this list when they match: ${VARIETALS.flatMap(g => g.items.map(v => v.name)).join(', ')}. "Heirloom"/"Ethiopian landraces" -> Ethiopian Landrace; "Geisha" -> Gesha; "Catuai" -> Catuaí; "S795" -> S.795; "Sln 9" -> SL9.
+- roast_date: only if printed. If only a "best before" date is shown, leave null.
+- notes: up to 3 short strings for anything the user should know (e.g. tasting notes printed on the bag, or "altitude not stated").
+- Use null for anything not stated. Never guess a value that is not on the bag or in the text.`;
+}
+async function readBag(){
+  const text = $('#bag-text').value.trim();
+  if (!AI.fn){ openSignin(); return; }
+  if (!BAG.img && !text){ bagStatus('Add a photo of the bag, or paste a link or the product description.', 'warn'); return; }
+  if (BAG.img && !BAG.imagesOK){ bagStatus('Photos are not supported in this view. Paste the product description instead.', 'warn'); return; }
+  if (BAG.busy) return;
+  const onlyLink = !BAG.img && /^https?:\/\/\S+$/.test(text);
+  BAG.busy = true; BAG.ctl = new AbortController(); $('#bag-go').textContent = 'Reading…'; $('#bag-go').disabled = true;
+  bagStatus(onlyLink ? 'Reading the link… Claude can only see the address itself, not the page, so paste the product description too for best results.' : 'Claude is reading your bag…');
+  try {
+    const opts = {modelTier:'quick', signal:BAG.ctl.signal, cache:{gcTime:864e5}};
+    if (BAG.img) opts.images = BAG.img;
+    const j = await AI.fn.json(bagPrompt(text), opts);
+    applyBag(j || {}, onlyLink);
+  } catch (e){
+    const msg = e.code === 'not_granted' ? 'Claude is not allowed for this page.' : e.code === 'rate_limited' ? 'Claude is busy or your usage limit was reached. Try again later.'
+      : e.code === 'image_rejected' ? 'That photo could not be read. Try a smaller, clearer JPG or PNG.' : e.code === 'images_unavailable' ? 'Photos are not supported in this view. Paste the product description instead.'
+      : e.code === 'invalid_json' ? 'Claude could not make sense of it. Try a clearer photo or paste more of the product text.' : e.code === 'cancelled' ? '' : 'Something went wrong. Please try again.';
+    if (msg) bagStatus(msg, 'warn');
+  } finally { BAG.busy = false; $('#bag-go').textContent = 'Fill settings with Claude'; $('#bag-go').disabled = false; }
+}
+$('#bag-go').addEventListener('click', readBag);
+function applyBag(j, onlyLink){
+  BAG.prev = {altitude:state.altitude, origin:state.origin, process:state.process, agtron:state.agtron, days:state.days, varietals:new Set(state.varietals), bagName:state.bagName};
+  const found = [], missing = [];
+  const origin = ORIGIN[j.origin] ? j.origin : null;
+  if (origin){ state.origin = origin; found.push(['Origin', origin]); } else missing.push('origin');
+  const alt = Number(j.altitude_m);
+  if (alt > 0){ state.altitude = Math.round(clamp(alt, 600, 2400) / 50) * 50; found.push(['Altitude', state.altitude + ' m' + (alt > 2400 || alt < 600 ? ' (clamped)' : '')]); } else missing.push('altitude');
+  if (PROC[j.process]){ state.process = j.process; found.push(['Process', PROC[j.process].name]); } else missing.push('process');
+  const ag = Number(j.agtron), lvl = {light:'light', 'light-medium':'mlight', medium:'medium', 'medium-dark':'mdark', dark:'dark'}[j.roast_level];
+  if (ag >= 25 && ag <= 100){ state.agtron = Math.round(clamp(ag, 25, 95)); found.push(['Roast', 'Agtron ' + state.agtron]); }
+  else if (lvl){ const r = ROASTS.find(r => r.id === lvl); state.agtron = r.ag; found.push(['Roast', r.name + ' (Agtron ' + r.ag + ', estimated)']); } else missing.push('roast');
+  const vs = (Array.isArray(j.varietals) ? j.varietals : []).filter(n => VAR[n]);
+  if (vs.length){ state.varietals = new Set(vs); found.push(['Varietal', vs.join(', ')]); } else missing.push('varietal');
+  const rd = j.roast_date && Date.parse(j.roast_date);
+  if (rd){ const d = Math.round((Date.now() - rd) / 864e5); if (d >= 0){ state.days = clamp(d, 2, 60); found.push(['Roasted', `${j.roast_date} (${d} days ago)`]); } else missing.push('roast date'); } else missing.push('roast date');
+  state.bagName = [j.roaster, j.coffee].filter(Boolean).join(' · ') || null;
+  renderChips(); changed('bag');
+  const notes = (Array.isArray(j.notes) ? j.notes : []).slice(0, 3).map(n => `<li>${esc(String(n).slice(0, 160))}</li>`).join('');
+  bagStatus(`${state.bagName ? `<b>${esc(state.bagName)}</b>` : ''}
+    ${found.length ? `<ul class="bag-found">${found.map(([k, v]) => `<li><span>${k}</span>${esc(v)}</li>`).join('')}</ul>` : '<p>Nothing could be read from that. Try a clearer photo or paste the product text.</p>'}
+    ${missing.length ? `<p class="bag-miss">Not found, kept as before: ${missing.join(', ')}.${onlyLink ? ' Paste the product description to fill more.' : ''}</p>` : ''}
+    ${notes ? `<ul class="bag-notes">${notes}</ul>` : ''}
+    <button type="button" class="btn" id="bag-undo">Undo</button>`, 'ok');
+  $('#bag-undo').addEventListener('click', () => { if (!BAG.prev) return; Object.assign(state, BAG.prev); BAG.prev = null; renderChips(); changed('bag'); bagStatus('Restored your previous settings.'); });
+}
+function bagAvailability(){
+  const ok = !!AI.fn;
+  $('#bag-go').textContent = ok ? 'Fill settings with Claude' : 'Sign in with Claude to use this';
+  $('#bag-drop').hidden = ok && !BAG.imagesOK;
+}
+
 // Sign in with Claude: offered once to visitors who can't get the Claude-written notes
 const ARTIFACT_URL = 'https://claude.ai/artifact/3969w5PfFhYuEE4vGUDut4';
 const inClaude = !!window.claude?.use;
@@ -1209,10 +1340,12 @@ $('#signin-go').addEventListener('click', () => { try { localStorage.setItem('bs
 $('#signin-modal').addEventListener('click', e => { if (e.target.id === 'signin-modal') closeSignin(); });
 addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#signin-modal').hidden) closeSignin(); });
 if (!inClaude) offerSignin();
+bagAvailability();
 if (window.claude?.use){
   window.claude.use('sample').then(fn => {
-    if (!fn){ offerSignin(); return; }
+    if (!fn){ offerSignin(); bagAvailability(); return; }
     $('#signin-pill').hidden = true;
+    fn.limits().then(l => { BAG.imagesOK = !!l?.images; bagAvailability(); }).catch(() => bagAvailability());
     AI.fn = fn; $('#ask-sec').hidden = false; renderNotes();
     runAI(false);            // one write-up at load; cached for a day for the same bag
   }).catch(() => offerSignin());
@@ -1270,7 +1403,7 @@ let toastTimer = 0;
 function showToast(kind, prev){
   const keys = [['CO₂','co2'],['Density','density'],['Porosity','porosity'],['Solubility','solubility'],['Fines risk','fines'],['Acidity','acidity'],['Sweetness','sweetness'],['Body','body']];
   const ds = keys.map(([n,k]) => ({n, a:prev[k], b:M[k]})).filter(d => Math.abs(d.b - d.a) > .02).sort((x,y) => Math.abs(y.b - y.a) - Math.abs(x.b - x.a)).slice(0, 3);
-  const what = kind === 'altitude' ? `Altitude ${state.altitude} m` : kind === 'process' ? M.P.name : kind === 'roast' ? `Agtron ${state.agtron}` : kind === 'varietal' ? 'Varietal mix' : kind === 'days' ? `Roasted ${state.days} days ago` : kind === 'origin' ? `Origin: ${state.origin}` : kind === 'grinder' ? grinderOf(state.grinder).name : `Dose ${state.dose} g`;
+  const what = kind === 'altitude' ? `Altitude ${state.altitude} m` : kind === 'process' ? M.P.name : kind === 'roast' ? `Agtron ${state.agtron}` : kind === 'varietal' ? 'Varietal mix' : kind === 'days' ? `Roasted ${state.days} days ago` : kind === 'bag' ? (state.bagName ? `Read: ${state.bagName}` : 'Settings from your bag') : kind === 'origin' ? `Origin: ${state.origin}` : kind === 'grinder' ? grinderOf(state.grinder).name : `Dose ${state.dose} g`;
   const r = M.recipe, pr = prev.recipe;
   const rec = [];
   if (r.tLo !== pr.tLo) rec.push(`<span class="delta">Temp <b class="${r.tLo > pr.tLo ? 'up' : 'dn'}">${r.tLo}–${r.tHi}°</b></span>`);
@@ -2361,7 +2494,7 @@ layout();
 if (!reduceMotion) trans = {t0:performance.now(), phase:2, p0:camera.position.clone(), q0:controls.target.clone()};
 $('#loading').remove();
 window.__bsReady = true;
-window.__bs = {goTo, state, changed, get M(){ return M; }};
+window.__bs = {goTo, state, changed, applyBag, get M(){ return M; }};
 requestAnimationFrame(animate);
 </script>
 
