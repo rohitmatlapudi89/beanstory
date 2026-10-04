@@ -71,10 +71,14 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .bag-body{display:flex;flex-direction:column;gap:9px}
 .bag-drop{display:flex;align-items:center;gap:10px;padding:10px;border:1px dashed var(--line2);border-radius:10px;cursor:pointer;font-size:13px;color:var(--soft)}
 .bag-drop.over,.bag-drop:hover{border-color:var(--cyan);color:#fff}
-.bag-card[hidden],.bag-drop[hidden]{display:none!important}
+.bag-drop[hidden]{display:none!important}
 .bag-drop img{width:44px;height:44px;object-fit:cover;border-radius:6px}
 .bag-drop input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .bag-drop .x{margin-left:auto;border:0;background:none;color:var(--mute);font-size:13px;padding:0 4px}
+.bag-body textarea{width:100%;min-height:58px;resize:vertical;background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;font:inherit;font-size:13px;color:var(--ink)}
+.bag-body textarea::placeholder{color:var(--faint)}
+.bag-nophoto{margin:0;font-size:12px;color:var(--mute);line-height:1.45}
+.bag-nophoto[hidden]{display:none}
 .bag-status{font-size:12.5px;color:var(--soft);line-height:1.5;display:flex;flex-direction:column;gap:6px}
 .bag-status:empty{display:none}
 .bag-status.warn{color:var(--amber)}
@@ -330,6 +334,8 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
           <div class="bag-head"><span class="label">✦ Read my bag</span><button type="button" id="bag-toggle" aria-expanded="true" aria-controls="bag-body"><span id="bag-toggle-txt">Hide</span></button></div>
           <div class="bag-body" id="bag-body">
             <label class="bag-drop" id="bag-drop"><input type="file" id="bag-file" accept="image/*"><img id="bag-thumb" alt="Bag photo" hidden><span id="bag-drop-txt">Add a photo of the bag</span><button type="button" class="x" id="bag-clear-img" hidden aria-label="Remove photo">✕</button></label>
+            <p class="bag-nophoto" id="bag-nophoto" hidden>Photo reading isn't available in this Claude view. Type what's on the bag below instead.</p>
+            <textarea id="bag-text" placeholder="Notes (optional): anything else from the bag, e.g. &quot;washed + honey, whiskey barrel aged, 1,200 m, roasted 20 Sep&quot;" aria-label="Notes from the bag (optional)"></textarea>
             <button type="button" class="btn primary" id="bag-go">Fill settings with Claude</button>
             <div class="bag-status" id="bag-status" aria-live="polite"></div>
           </div>
@@ -1228,7 +1234,7 @@ $('#pdf-btn').addEventListener('click', downloadPDF);
 window.__buildPDF = buildPDF;
 
 /* =====================================================================
-   READ MY BAG: fill the settings from a photo of the bag
+   READ MY BAG: fill the settings from a photo of the bag and/or typed notes
    ===================================================================== */
 const BAG = {img:null, prev:null, busy:false, ctl:null, imagesOK:false};
 function bagCollapse(c){
@@ -1251,9 +1257,10 @@ const drop = $('#bag-drop');
 drop.addEventListener('drop', e => setBagImage(e.dataTransfer.files[0]));
 $('#bag-clear-img').addEventListener('click', () => { BAG.img = null; $('#bag-thumb').hidden = true; $('#bag-file').value = ''; $('#bag-drop-txt').textContent = 'Add a photo of the bag'; $('#bag-clear-img').hidden = true; });
 document.addEventListener('paste', e => { const f = [...(e.clipboardData?.files || [])].find(f => /^image\//.test(f.type)); if (f && !$('#bag-card').classList.contains('collapsed')) setBagImage(f); });
-function bagPrompt(){
+function bagPrompt(text){
   const today = new Date().toISOString().slice(0, 10);
-  return `Read the coffee bag in the attached photo and extract the settings for a coffee app.
+  return `Read this coffee bag${BAG.img ? ' (photo attached)' : ''}${text ? `${BAG.img ? ' plus' : ' from'} the notes the user typed` : ''} and extract the settings for a coffee app.
+${text ? `\nUser's notes about the bag:\n"""\n${text.slice(0, 3000)}\n"""\n` : ''}
 Today is ${today}.
 
 Reply with only JSON:
@@ -1267,22 +1274,25 @@ Rules:
 - varietals: names exactly from this list when they match: ${VARIETALS.flatMap(g => g.items.map(v => v.name)).join(', ')}. "Heirloom"/"Ethiopian landraces" -> Ethiopian Landrace; "Geisha" -> Gesha; "Catuai" -> Catuaí; "S795" -> S.795; "Sln 9" -> SL9.
 - roast_date: only if printed. If only a "best before" date is shown, leave null.
 - notes: up to 3 short strings for anything the user should know (e.g. tasting notes printed on the bag, or "altitude not stated").
-- Use null for anything not stated. Never guess a value that is not on the bag.`;
+- Use null for anything not stated. Never guess a value that is not on the bag or in the notes.`;
 }
 async function readBag(){
+  const text = $('#bag-text').value.trim();
   if (!AI.fn){ openSignin(); return; }
-  if (!BAG.img){ bagStatus('Add a photo of the bag first.', 'warn'); return; }
-  if (!BAG.imagesOK){ bagStatus('Photos are not supported in this view. Set the bag by hand below.', 'warn'); return; }
+  if (!BAG.img && !text){ bagStatus(BAG.imagesOK ? 'Add a photo of the bag or type a few notes from it.' : "Type what's on the bag first.", 'warn'); return; }
+  if (BAG.img && !BAG.imagesOK){ bagStatus("Photo reading isn't available in this view. Remove the photo and type the details instead.", 'warn'); return; }
   if (BAG.busy) return;
   BAG.busy = true; BAG.ctl = new AbortController(); $('#bag-go').textContent = 'Reading…'; $('#bag-go').disabled = true;
   bagStatus('Claude is reading your bag…');
   try {
-    const j = await AI.fn.json(bagPrompt(), {modelTier:'quick', signal:BAG.ctl.signal, cache:{gcTime:864e5}, images:BAG.img});
+    const opts = {modelTier:'quick', signal:BAG.ctl.signal, cache:{gcTime:864e5}};
+    if (BAG.img) opts.images = BAG.img;
+    const j = await AI.fn.json(bagPrompt(text), opts);
     applyBag(j || {});
   } catch (e){
     const msg = e.code === 'not_granted' ? 'Claude is not allowed for this page.' : e.code === 'rate_limited' ? 'Claude is busy or your usage limit was reached. Try again later.'
-      : e.code === 'image_rejected' ? 'That photo could not be read. Try a smaller, clearer JPG or PNG.' : e.code === 'images_unavailable' ? 'Photos are not supported in this view. Set the bag by hand below.'
-      : e.code === 'invalid_json' ? 'Claude could not make sense of it. Try a clearer photo of the label.' : e.code === 'cancelled' ? '' : 'Something went wrong. Please try again.';
+      : e.code === 'image_rejected' ? 'That photo could not be read. Try a smaller, clearer JPG or PNG.' : e.code === 'images_unavailable' ? "Photo reading isn't available in this view. Type the details instead."
+      : e.code === 'invalid_json' ? 'Claude could not make sense of it. Try a clearer photo or more detailed notes.' : e.code === 'cancelled' ? '' : 'Something went wrong. Please try again.';
     if (msg) bagStatus(msg, 'warn');
   } finally { BAG.busy = false; $('#bag-go').textContent = 'Fill settings with Claude'; $('#bag-go').disabled = false; }
 }
@@ -1306,7 +1316,7 @@ function applyBag(j){
   renderChips(); changed('bag');
   const notes = (Array.isArray(j.notes) ? j.notes : []).slice(0, 3).map(n => `<li>${esc(String(n).slice(0, 160))}</li>`).join('');
   bagStatus(`${state.bagName ? `<b>${esc(state.bagName)}</b>` : ''}
-    ${found.length ? `<ul class="bag-found">${found.map(([k, v]) => `<li><span>${k}</span>${esc(v)}</li>`).join('')}</ul>` : '<p>Nothing could be read from that. Try a clearer photo of the label.</p>'}
+    ${found.length ? `<ul class="bag-found">${found.map(([k, v]) => `<li><span>${k}</span>${esc(v)}</li>`).join('')}</ul>` : '<p>Nothing could be read from that. Try a clearer photo or more detailed notes.</p>'}
     ${missing.length ? `<p class="bag-miss">Not found, kept as before: ${missing.join(', ')}. Set these by hand below.</p>` : ''}
     ${notes ? `<ul class="bag-notes">${notes}</ul>` : ''}
     <button type="button" class="btn" id="bag-undo">Undo</button>`, 'ok');
@@ -1315,7 +1325,10 @@ function applyBag(j){
 function bagAvailability(){
   const ok = !!AI.fn;
   $('#bag-go').textContent = ok ? 'Fill settings with Claude' : 'Sign in with Claude to use this';
-  $('#bag-card').hidden = ok && !BAG.imagesOK;     // signed in but photos unsupported: nothing to offer
+  const noPhoto = ok && !BAG.imagesOK;            // signed in, but this view can't send images: notes only
+  $('#bag-drop').hidden = noPhoto; $('#bag-nophoto').hidden = !noPhoto;
+  $('#bag-text').placeholder = noPhoto ? 'What\'s on the bag, e.g. "India, S795, washed + honey, barrel aged, light roast, roasted 20 Sep"'
+    : 'Notes (optional): anything else from the bag, e.g. "washed + honey, whiskey barrel aged, 1,200 m, roasted 20 Sep"';
 }
 
 // Sign in with Claude: offered once to visitors who can't get the Claude-written notes
