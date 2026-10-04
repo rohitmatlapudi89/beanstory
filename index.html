@@ -71,12 +71,10 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .bag-body{display:flex;flex-direction:column;gap:9px}
 .bag-drop{display:flex;align-items:center;gap:10px;padding:10px;border:1px dashed var(--line2);border-radius:10px;cursor:pointer;font-size:13px;color:var(--soft)}
 .bag-drop.over,.bag-drop:hover{border-color:var(--cyan);color:#fff}
-.bag-drop[hidden]{display:none!important}
+.bag-card[hidden],.bag-drop[hidden]{display:none!important}
 .bag-drop img{width:44px;height:44px;object-fit:cover;border-radius:6px}
 .bag-drop input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .bag-drop .x{margin-left:auto;border:0;background:none;color:var(--mute);font-size:13px;padding:0 4px}
-.bag-body textarea{width:100%;min-height:58px;resize:vertical;background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;font:inherit;font-size:13px;color:var(--ink)}
-.bag-body textarea::placeholder{color:var(--faint)}
 .bag-status{font-size:12.5px;color:var(--soft);line-height:1.5;display:flex;flex-direction:column;gap:6px}
 .bag-status:empty{display:none}
 .bag-status.warn{color:var(--amber)}
@@ -332,7 +330,6 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
           <div class="bag-head"><span class="label">✦ Read my bag</span><button type="button" id="bag-toggle" aria-expanded="true" aria-controls="bag-body"><span id="bag-toggle-txt">Hide</span></button></div>
           <div class="bag-body" id="bag-body">
             <label class="bag-drop" id="bag-drop"><input type="file" id="bag-file" accept="image/*"><img id="bag-thumb" alt="Bag photo" hidden><span id="bag-drop-txt">Add a photo of the bag</span><button type="button" class="x" id="bag-clear-img" hidden aria-label="Remove photo">✕</button></label>
-            <textarea id="bag-text" placeholder="…or paste the product link and its description (origin, altitude, process, roast…)" aria-label="Product link or description"></textarea>
             <button type="button" class="btn primary" id="bag-go">Fill settings with Claude</button>
             <div class="bag-status" id="bag-status" aria-live="polite"></div>
           </div>
@@ -472,6 +469,10 @@ const PROCESSES = [
     title:'Wet-hulled: parchment off while still wet', lead:'Common in Indonesia. The parchment is stripped at about 50% moisture and the <b>naked bean</b> dries fast. Earthy, low acid, heavy body.'},
   {id:'monsooned', group:'Regional', name:'Monsooned Malabar', fruit:0, ferm:.1, weak:.45, sol:.2, sugar:.1, acid:-.4, lac:.05, ace:.05, est:.05, body:.55, temp:-.8, grind:.6, dens:-.2, stage:'monsooned', muc:0,
     title:'Monsooned Malabar: swollen by monsoon winds', lead:'An Indian classic. Green beans sit in open warehouses through the monsoon, <b>swell, turn pale</b> and lose most of their acidity.'},
+  // Applied after normal processing (often washed or honey): green beans rest for weeks in used spirit or wine barrels,
+  // take up some moisture and wood/spirit aromatics (vanillin, oak lactones), then are re-dried. Effects are milder than monsooning.
+  {id:'barrel',    group:'Aged & infused', name:'Barrel-aged / infused', fruit:.2, ferm:.25, weak:.2, sol:.12, sugar:.15, acid:-.15, lac:.05, ace:.15, est:.7, body:.3, temp:-1, grind:.3, dens:-.08, stage:'barrel', muc:0,
+    title:'Barrel-aged: rested in a spirit barrel', lead:'After normal processing, the <b>green beans rest for weeks</b> in an emptied whiskey, rum or wine barrel. They soak up a little moisture and <b>wood and spirit aromas</b>, then are dried again.'},
 ];
 // Origin and approximate growing latitude (°). Further from the equator is cooler at the same altitude.
 const ORIGINS = [
@@ -706,7 +707,7 @@ function recipe(M){
    UI: CONTROLS
    ===================================================================== */
 const procSel = $('#process');
-['Classic','Fermentation','Regional'].forEach(g => {
+['Classic','Fermentation','Regional','Aged & infused'].forEach(g => {
   const og = document.createElement('optgroup'); og.label = g;
   PROCESSES.filter(p => p.group === g).forEach(p => og.appendChild(new Option(p.name, p.id)));
   procSel.appendChild(og);
@@ -774,7 +775,7 @@ const CALLOUTS = [
     {id:'parchment', label:'Parchment', tag:'endocarp', sw:SW.parchment, dx:-120, dy:-110, when:M => cherryT.parch > .5,
       text:M => 'A porous papery husk. Sugars and aromas from the fruit move <b>through it into the bean</b>.'},
     {id:'bean', label:'Green bean', tag:'endosperm', sw:SW.bean, dx:150, dy:-90,
-      text:M => M.P.stage === 'wethulled' ? 'Hulled while wet, the naked bean turns a dark blue-green.' : M.P.stage === 'monsooned' ? 'Swollen by monsoon moisture, the bean turns pale gold and soft.' : 'The seed: water, acids, fats and sugars in a cellulose skeleton. Usually two per cherry, flat sides facing.'},
+      text:M => M.P.stage === 'wethulled' ? 'Hulled while wet, the naked bean turns a dark blue-green.' : M.P.stage === 'monsooned' ? 'Swollen by monsoon moisture, the bean turns pale gold and soft.' : M.P.stage === 'barrel' ? 'Hulled green bean that rested in a spirit barrel: slightly swollen and amber-tinged, with wood and spirit aromas soaked in.' : 'The seed: water, acids, fats and sugars in a cellulose skeleton. Usually two per cherry, flat sides facing.'},
     {id:'centercut', label:'Centre cut', tag:'fold', sw:SW.cut, dx:170, dy:20,
       text:M => 'The bean is a folded leaf of tissue. The fold becomes the crease on the flat side.'},
     {id:'flows', label:'Sugars & esters', tag:'migrating in', sw:SW.flow, dx:160, dy:95, when:M => cherryT.flows > .15,
@@ -926,6 +927,7 @@ const PROC_NOTE = {
   thermal:'Soaked hot, then cold, after fermentation to lock in aromatics. Very perfumed cups.',
   wethulled:'Parchment stripped while wet; the bean dries fast and irregularly. Earthy, low acid, heavy body.',
   monsooned:'Green beans swelled in monsoon humidity and lost most acidity. Mellow, woody, soft and brittle.',
+  barrel:'Green beans rested in a used spirit or wine barrel and absorbed its aromas. Expect oak, vanilla and boozy notes over softer acidity.',
 };
 function roastNote(a){
   if (a >= 75) return `Agtron ${a}: light. Dense and acid-rich, slow to extract; needs heat and a finer grind.`;
@@ -976,6 +978,7 @@ const PROC_MEANS = {
   thermal:'Aromatics extract quickly; heavy agitation flattens them. Gentle pours.',
   wethulled:'Irregular, porous structure: uneven grind and plenty of fines. Coarser grind, gentle pours.',
   monsooned:'Swollen, soft, brittle bean that crumbles into fines and extracts fast. Coarse grind, cooler water, low agitation.',
+  barrel:'Moisture taken up in the barrel leaves the bean slightly softer, and the wood and spirit aromatics are volatile. Grind a touch coarser and brew a little cooler than washed, so the barrel notes stay sweet rather than harsh.',
 };
 function roastMeans(a){
   if (a >= 75) return 'Dense, low porosity: hard to extract, few fines. Finer grind, hotter water, longer contact.';
@@ -1225,7 +1228,7 @@ $('#pdf-btn').addEventListener('click', downloadPDF);
 window.__buildPDF = buildPDF;
 
 /* =====================================================================
-   READ MY BAG: fill the settings from a bag photo or a product link/description
+   READ MY BAG: fill the settings from a photo of the bag
    ===================================================================== */
 const BAG = {img:null, prev:null, busy:false, ctl:null, imagesOK:false};
 function bagCollapse(c){
@@ -1248,10 +1251,9 @@ const drop = $('#bag-drop');
 drop.addEventListener('drop', e => setBagImage(e.dataTransfer.files[0]));
 $('#bag-clear-img').addEventListener('click', () => { BAG.img = null; $('#bag-thumb').hidden = true; $('#bag-file').value = ''; $('#bag-drop-txt').textContent = 'Add a photo of the bag'; $('#bag-clear-img').hidden = true; });
 document.addEventListener('paste', e => { const f = [...(e.clipboardData?.files || [])].find(f => /^image\//.test(f.type)); if (f && !$('#bag-card').classList.contains('collapsed')) setBagImage(f); });
-function bagPrompt(text){
+function bagPrompt(){
   const today = new Date().toISOString().slice(0, 10);
-  return `Read this coffee bag ${BAG.img ? '(photo attached)' : ''}${text ? ' and this product text' : ''} and extract the settings for a coffee app.
-${text ? `\nProduct text or link from the user:\n"""\n${text.slice(0, 6000)}\n"""\n` : ''}
+  return `Read the coffee bag in the attached photo and extract the settings for a coffee app.
 Today is ${today}.
 
 Reply with only JSON:
@@ -1260,36 +1262,32 @@ Reply with only JSON:
 Rules:
 - origin: pick exactly one of: ${ORIGINS.map(o => o[0]).join(', ')}. Use "Other / unknown" if the country is not listed.
 - altitude_m: metres above sea level; for a range use the midpoint; convert feet to metres.
-- process: pick exactly one id: ${PROCESSES.map(p => `${p.id} (${p.name})`).join(', ')}. Map synonyms sensibly (e.g. "fully washed" -> washed, "dry process" -> natural, "pulped natural" -> semiwashed, "yeast inoculated" -> cultured, "infused" -> coferment).
+- process: pick exactly one id: ${PROCESSES.map(p => `${p.id} (${p.name})`).join(', ')}. Map synonyms sensibly (e.g. "fully washed" -> washed, "dry process" -> natural, "pulped natural" -> semiwashed, "yeast inoculated" -> cultured, fruit/spice added during fermentation -> coferment). If the beans were aged in a whiskey, rum, wine or other barrel, or flavour-infused after processing, pick barrel even if a base process is also named, and mention the base process in notes.
 - agtron only if a number is printed; otherwise roast_level from words like "light", "omni", "filter roast" (light-medium), "espresso roast" (medium-dark).
 - varietals: names exactly from this list when they match: ${VARIETALS.flatMap(g => g.items.map(v => v.name)).join(', ')}. "Heirloom"/"Ethiopian landraces" -> Ethiopian Landrace; "Geisha" -> Gesha; "Catuai" -> Catuaí; "S795" -> S.795; "Sln 9" -> SL9.
 - roast_date: only if printed. If only a "best before" date is shown, leave null.
 - notes: up to 3 short strings for anything the user should know (e.g. tasting notes printed on the bag, or "altitude not stated").
-- Use null for anything not stated. Never guess a value that is not on the bag or in the text.`;
+- Use null for anything not stated. Never guess a value that is not on the bag.`;
 }
 async function readBag(){
-  const text = $('#bag-text').value.trim();
   if (!AI.fn){ openSignin(); return; }
-  if (!BAG.img && !text){ bagStatus('Add a photo of the bag, or paste a link or the product description.', 'warn'); return; }
-  if (BAG.img && !BAG.imagesOK){ bagStatus('Photos are not supported in this view. Paste the product description instead.', 'warn'); return; }
+  if (!BAG.img){ bagStatus('Add a photo of the bag first.', 'warn'); return; }
+  if (!BAG.imagesOK){ bagStatus('Photos are not supported in this view. Set the bag by hand below.', 'warn'); return; }
   if (BAG.busy) return;
-  const onlyLink = !BAG.img && /^https?:\/\/\S+$/.test(text);
   BAG.busy = true; BAG.ctl = new AbortController(); $('#bag-go').textContent = 'Reading…'; $('#bag-go').disabled = true;
-  bagStatus(onlyLink ? 'Reading the link… Claude can only see the address itself, not the page, so paste the product description too for best results.' : 'Claude is reading your bag…');
+  bagStatus('Claude is reading your bag…');
   try {
-    const opts = {modelTier:'quick', signal:BAG.ctl.signal, cache:{gcTime:864e5}};
-    if (BAG.img) opts.images = BAG.img;
-    const j = await AI.fn.json(bagPrompt(text), opts);
-    applyBag(j || {}, onlyLink);
+    const j = await AI.fn.json(bagPrompt(), {modelTier:'quick', signal:BAG.ctl.signal, cache:{gcTime:864e5}, images:BAG.img});
+    applyBag(j || {});
   } catch (e){
     const msg = e.code === 'not_granted' ? 'Claude is not allowed for this page.' : e.code === 'rate_limited' ? 'Claude is busy or your usage limit was reached. Try again later.'
-      : e.code === 'image_rejected' ? 'That photo could not be read. Try a smaller, clearer JPG or PNG.' : e.code === 'images_unavailable' ? 'Photos are not supported in this view. Paste the product description instead.'
-      : e.code === 'invalid_json' ? 'Claude could not make sense of it. Try a clearer photo or paste more of the product text.' : e.code === 'cancelled' ? '' : 'Something went wrong. Please try again.';
+      : e.code === 'image_rejected' ? 'That photo could not be read. Try a smaller, clearer JPG or PNG.' : e.code === 'images_unavailable' ? 'Photos are not supported in this view. Set the bag by hand below.'
+      : e.code === 'invalid_json' ? 'Claude could not make sense of it. Try a clearer photo of the label.' : e.code === 'cancelled' ? '' : 'Something went wrong. Please try again.';
     if (msg) bagStatus(msg, 'warn');
   } finally { BAG.busy = false; $('#bag-go').textContent = 'Fill settings with Claude'; $('#bag-go').disabled = false; }
 }
 $('#bag-go').addEventListener('click', readBag);
-function applyBag(j, onlyLink){
+function applyBag(j){
   BAG.prev = {altitude:state.altitude, origin:state.origin, process:state.process, agtron:state.agtron, days:state.days, varietals:new Set(state.varietals), bagName:state.bagName};
   const found = [], missing = [];
   const origin = ORIGIN[j.origin] ? j.origin : null;
@@ -1308,8 +1306,8 @@ function applyBag(j, onlyLink){
   renderChips(); changed('bag');
   const notes = (Array.isArray(j.notes) ? j.notes : []).slice(0, 3).map(n => `<li>${esc(String(n).slice(0, 160))}</li>`).join('');
   bagStatus(`${state.bagName ? `<b>${esc(state.bagName)}</b>` : ''}
-    ${found.length ? `<ul class="bag-found">${found.map(([k, v]) => `<li><span>${k}</span>${esc(v)}</li>`).join('')}</ul>` : '<p>Nothing could be read from that. Try a clearer photo or paste the product text.</p>'}
-    ${missing.length ? `<p class="bag-miss">Not found, kept as before: ${missing.join(', ')}.${onlyLink ? ' Paste the product description to fill more.' : ''}</p>` : ''}
+    ${found.length ? `<ul class="bag-found">${found.map(([k, v]) => `<li><span>${k}</span>${esc(v)}</li>`).join('')}</ul>` : '<p>Nothing could be read from that. Try a clearer photo of the label.</p>'}
+    ${missing.length ? `<p class="bag-miss">Not found, kept as before: ${missing.join(', ')}. Set these by hand below.</p>` : ''}
     ${notes ? `<ul class="bag-notes">${notes}</ul>` : ''}
     <button type="button" class="btn" id="bag-undo">Undo</button>`, 'ok');
   $('#bag-undo').addEventListener('click', () => { if (!BAG.prev) return; Object.assign(state, BAG.prev); BAG.prev = null; renderChips(); changed('bag'); bagStatus('Restored your previous settings.'); });
@@ -1317,7 +1315,7 @@ function applyBag(j, onlyLink){
 function bagAvailability(){
   const ok = !!AI.fn;
   $('#bag-go').textContent = ok ? 'Fill settings with Claude' : 'Sign in with Claude to use this';
-  $('#bag-drop').hidden = ok && !BAG.imagesOK;
+  $('#bag-card').hidden = ok && !BAG.imagesOK;     // signed in but photos unsupported: nothing to offer
 }
 
 // Sign in with Claude: offered once to visitors who can't get the Claude-written notes
@@ -1700,11 +1698,11 @@ function cherryExplode(e){
 }
 function cherryTargets(M){
   const P = M.P, st = P.stage, prim = M.prim;
-  const ghostOuter = ['washed','honey','wethulled','monsooned'].includes(st);
+  const ghostOuter = ['washed','honey','wethulled','monsooned','barrel'].includes(st);
   cherryT.skin = ghostOuter ? .07 : 1;
-  cherryT.muc = st === 'washed' || st === 'wethulled' || st === 'monsooned' ? 0 : P.muc;
+  cherryT.muc = st === 'washed' || st === 'wethulled' || st === 'monsooned' || st === 'barrel' ? 0 : P.muc;
   cherryT.mucLevel = P.muc;
-  cherryT.parch = st === 'wethulled' || st === 'monsooned' ? .07 : 1;
+  cherryT.parch = st === 'wethulled' || st === 'monsooned' || st === 'barrel' ? .07 : 1;
   cherryT.wet = st === 'washed' ? 1 : 0;
   cherryT.wrinkle = st === 'natural' ? 1 : 0;
   cherryT.bubbles = st === 'carbonic' ? 1 : st === 'tank' ? .65 : st === 'thermal' ? .5 : st === 'cultured' ? .25 : st === 'coferment' ? .35 : 0;
@@ -1716,7 +1714,7 @@ function cherryTargets(M){
   const skinHex = st === 'natural' ? '#3a0f18' : prim.cherry === 'yellow' ? '#e0a418' : prim.cherry === 'pink' ? '#e2607a' : '#8e0c22';
   cherryColT.skin.set(skinHex);
   cherryColT.pulp.set(st === 'natural' ? '#a3714f' : st === 'tank' || st === 'cultured' ? '#f6e6d6' : '#ffffff');
-  cherryColT.bean.set(st === 'wethulled' ? '#6f9e92' : st === 'monsooned' ? '#f2dc96' : st === 'natural' || st === 'cultured' ? '#e4e2b0' : '#ffffff');
+  cherryColT.bean.set(st === 'wethulled' ? '#6f9e92' : st === 'monsooned' ? '#f2dc96' : st === 'barrel' ? '#d9bf86' : st === 'natural' || st === 'cultured' ? '#e4e2b0' : '#ffffff');
   cherryColT.muc.set(st === 'honey' ? (P.muc > .9 ? '#7a3a12' : P.muc > .6 ? '#b8601c' : '#e2a63e') : st === 'tank' || st === 'cultured' ? '#e0a040' : '#f0c060');
 }
 const _o = new THREE.Object3D();
@@ -2024,7 +2022,7 @@ function updateStack(dt, t, e){
   greenMat.color.copy(cherryCol.bean);
 }
 let greenDirty = true;
-// Cut view when the fruit has been removed (washed, honey, wet-hulled, monsooned):
+// Cut view when the fruit has been removed (washed, honey, wet-hulled, monsooned, barrel-aged):
 // two real 3D green beans in translucent parchment, flat sides facing, with optional mucilage coat.
 const pcoffee = new THREE.Group(); fx.add(pcoffee);
 const pcParch = stackMats.parch.clone(); pcParch.transparent = true; pcParch.opacity = .55; pcParch.depthWrite = false; pcParch.sheen = .1; pcParch.color.set(0xb89a6c); pcParch.envMapIntensity = .4; pcParch.side = THREE.FrontSide;

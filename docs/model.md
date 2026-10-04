@@ -18,7 +18,7 @@ All code referenced here is in `index.html` (`model()`, `composition()`, `recipe
 |---|---|---|
 | Origin | 27 countries | Used for latitude only |
 | Altitude | 600–2,400 m | |
-| Processing | 13 methods | Each has fruit contact, fermentation intensity, wall weakening, sugar uptake and acid shifts |
+| Processing | 14 methods | Each has fruit contact, fermentation intensity, wall weakening, sugar uptake and acid shifts |
 | Roast | Agtron 25–95 | SCA colour tiles: 95 very light · 75 moderately light · 65 light-medium · 55 medium · 45 medium-dark · 35 dark · 25 very dark |
 | Days since roast | 2–60 | Drives CO₂ |
 | Varietals | 31, multi-select | Bean shape follows the first pick; flavour traits average across picks |
@@ -31,7 +31,7 @@ Altitude is a proxy for growing temperature, and temperature also depends on lat
 
 ### Density: *supported*
 
-Slower ripening at cooler sites gives harder, denser beans ("strictly hard bean" grading). Density rises with effective altitude. Processing adds small adjustments (monsooned and wet-hulled beans are softer) and fermentation weakening lowers it slightly.
+Slower ripening at cooler sites gives harder, denser beans ("strictly hard bean" grading). Density rises with effective altitude. Processing adds small adjustments (monsooned, wet-hulled and barrel-aged beans are softer, since they take up moisture after processing) and fermentation weakening lowers it slightly.
 
 ### Porosity, brittleness/fines, solubility: *established for roast, supported for the rest*
 
@@ -59,6 +59,10 @@ Oils migrate to the surface once roasting passes second crack (roughly Agtron < 
 ### Varietal traits: *heuristic*
 
 Each varietal has rough tendencies (acidity, sweetness, body, lipids, phosphoric acid, bean size and shape, cherry colour). These are generalisations; origin, farm practice and processing usually matter more.
+
+### Barrel-aged / infused: *heuristic*
+
+Barrel aging happens after normal processing: green beans rest for weeks in an emptied whiskey, rum or wine barrel, take up some moisture and wood or spirit aromatics, and are dried again. The model treats it as a milder version of monsooning: slightly lower density and acidity, more aroma (esters), a touch more body, and a slightly cooler, coarser brew. The base process (washed, honey…) is not tracked separately.
 
 ## 3. Single-cell composition
 
