@@ -164,6 +164,7 @@ select option,select optgroup{background:#121829;color:var(--ink)}
 .signin-pill{display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:6px 12px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--ink);border:1px solid rgba(127,227,255,.45);background:rgba(127,227,255,.08);text-shadow:none}
 .signin-pill:hover{background:rgba(127,227,255,.18)}
 .signin-pill[hidden],.modal[hidden]{display:none!important}
+.modal-card [hidden]{display:none!important}
 .modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(5,8,15,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 .modal-card{width:min(420px,100%);padding:24px 24px 20px;display:flex;flex-direction:column;gap:14px}
 .modal-card h2{margin:0;font-size:21px;font-weight:700;letter-spacing:-.2px;text-wrap:balance}
@@ -425,6 +426,9 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
       <button type="button" class="btn" id="signin-later">Continue without</button>
     </div>
     <small id="signin-diag" style="display:block;margin-top:6px;opacity:.7"></small>
+    <details id="signin-details" style="margin-top:8px;font-size:12px;opacity:.85"><summary style="cursor:pointer">Technical details</summary>
+      <pre id="signin-info" style="white-space:pre-wrap;word-break:break-word;margin:6px 0;padding:8px;border-radius:8px;background:rgba(255,255,255,.05);font:11px/1.45 var(--f-mono)"></pre>
+      <button type="button" class="btn" id="signin-copy">Copy details</button></details>
     <small id="signin-hint">Everything else works without signing in. Notes are written on your own Claude account.</small>
   </div>
 </div>
@@ -1349,6 +1353,7 @@ function offerSignin(){
   $('#signin-pill').textContent = CL.why === 'outside' ? '✦ Open in Claude' : CL.why === 'denied' ? '✦ Allow Claude notes' : '✦ Claude notes unavailable';
   go.hidden = CL.why !== 'outside'; act.hidden = CL.why !== 'denied'; retry.hidden = CL.why === 'outside';
   retry.classList.toggle('primary', CL.why === 'unavailable');
+  $('#signin-info').textContent = Object.entries(CL.info || {version:'v20', hasClaude:!!window.claude, framed:(() => { try { return window.top !== window.self; } catch (e) { return 'cross-origin'; } })(), host:location.host, ua:navigator.userAgent}).map(([k, v]) => k + ': ' + v).join('\n');
   $('#signin-diag').textContent = inClaude ? `Status: Claude access is ${CL.perm === '?' ? 'not available in this view' : CL.perm}.` : '';
   if (CL.why === 'denied'){
     title.textContent = 'Claude is switched off for this page';
@@ -1375,6 +1380,11 @@ $('#signin-act').addEventListener('click', async () => {
   try { const pm = await window.claude.use('permissions'); await pm.manage(); } catch (err) { $('#signin-diag').textContent = 'Could not open the panel. Use this page\'s Permissions menu in claude.ai instead.'; return; }
   await initClaude(); if (AI.fn) $('#signin-modal').hidden = true; else offerSignin();
 });
+$('#signin-copy').addEventListener('click', async () => {
+  const t = $('#signin-info').textContent, b = $('#signin-copy');
+  try { await navigator.clipboard.writeText(t); b.textContent = 'Copied'; } catch (e) { const r = document.createRange(); r.selectNodeContents($('#signin-info')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); b.textContent = 'Selected: press copy'; }
+  setTimeout(() => b.textContent = 'Copy details', 2500);
+});
 $('#signin-retry').addEventListener('click', async () => {
   const b = $('#signin-retry'), label = b.textContent; b.disabled = true; b.textContent = 'Checking…'; $('#signin-diag').textContent = '';
   await initClaude();
@@ -1387,12 +1397,22 @@ $('#signin-modal').addEventListener('click', e => { if (e.target.id === 'signin-
 addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#signin-modal').hidden) closeSignin(); });
 if (!inClaude) offerSignin();
 bagAvailability();
+async function gatherInfo(fn, perm){
+  const t0 = performance.now(), out = {version:'v20', time:new Date().toISOString(), framed:(() => { try { return window.top !== window.self; } catch (e) { return 'cross-origin'; } })(), host:location.host, ref:document.referrer || '(none)',
+    hasClaude:!!window.claude, claudeKeys:Object.keys(window.claude || {}).join(','), sample:fn ? 'function' : 'null', permissionsState:perm, ua:navigator.userAgent};
+  for (const n of ['permissions','downloads','user','artifact']){ try { const v = await Promise.race([window.claude.use(n), new Promise(r => setTimeout(() => r('timeout'), 3000))]); out['use_' + n] = v === 'timeout' ? 'timeout' : v ? 'ok' : 'null'; } catch (e) { out['use_' + n] = 'error ' + (e.code || e.message); } }
+  try { const pm = await window.claude.use('permissions'); if (pm) out.permissionMap = JSON.stringify(await pm.state()); } catch (e) {}
+  if (fn){ try { out.limits = JSON.stringify(await fn.limits()); } catch (e) { out.limits = 'error ' + (e.code || e.message); } }
+  out.ms = Math.round(performance.now() - t0);
+  return out;
+}
 async function initClaude(){
   if (!window.claude?.use || AI.fn) return;
   let fn = null, perm = '?';
   try { fn = await window.claude.use('sample'); } catch (e) {}
   try { const pm = await window.claude.use('permissions'); if (pm) perm = await pm.state('sample'); } catch (e) {}
   CL.perm = perm; CL.checked = true;
+  CL.info = await gatherInfo(fn, perm);
   if (!fn || perm === 'denied'){ offerSignin(); bagAvailability(); return; }
   $('#signin-pill').hidden = true; $('#signin-modal').hidden = true;
   fn.limits().then(l => { BAG.imagesOK = !!l?.images; bagAvailability(); }).catch(() => bagAvailability());
