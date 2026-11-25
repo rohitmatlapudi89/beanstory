@@ -412,8 +412,8 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
   <div class="modal-card glass">
     <span class="label" style="color:var(--cyan)">Better with Claude</span>
     <h2 id="signin-title">Get notes written for your exact bag</h2>
-    <p>Sign in with a free Claude account and Beanstory will:</p>
-    <ul>
+    <p id="signin-lead">Sign in with a free Claude account and Beanstory will:</p>
+    <ul id="signin-list">
       <li>explain your bean's altitude, process, roast and varietal in plain words</li>
       <li>tell you what that means for grinding and pouring</li>
       <li>answer your follow-up questions about the bag</li>
@@ -1345,21 +1345,26 @@ function offerSignin(){
   const go = $('#signin-go'), hint = $('#signin-hint'), title = $('#signin-title'), retry = $('#signin-retry');
   CL.why = !inClaude ? 'outside' : CL.perm === 'denied' ? 'denied' : 'unavailable';
   retry.hidden = CL.why === 'outside';
+  // Inside claude.ai the viewer is already signed in, so never ask them to sign in
+  $('#signin-lead').hidden = $('#signin-list').hidden = CL.why !== 'outside';
+  $('#signin-pill').textContent = CL.why === 'outside' ? '✦ Sign in with Claude' : CL.why === 'denied' ? '✦ Allow Claude notes' : '✦ Claude notes unavailable';
   $('#signin-diag').textContent = inClaude ? `Status: Claude access is ${CL.perm === '?' ? 'not available in this view' : CL.perm}.` : '';
   if (CL.why === 'denied'){
     title.textContent = 'Claude is switched off for this page';
     go.textContent = 'Open permissions'; go.removeAttribute('href'); go.dataset.act = 'perm';
     hint.textContent = 'Allow Claude for this page in its Permissions menu, then press Try again. Everything else works without it.';
   } else if (CL.why === 'unavailable'){
-    title.textContent = 'Claude is not reachable in this view';
-    go.textContent = 'Open in Claude'; go.href = ARTIFACT_URL; go.dataset.act = '';
-    hint.textContent = 'If you are already signed in, open this link directly in claude.ai in a normal tab (not a preview or embedded view), allow Claude when asked, then press Try again. Everything else works without it.';
+    title.textContent = 'Live Claude notes are not available in this view';
+    go.textContent = 'Try again'; go.removeAttribute('href'); go.dataset.act = 'retry';
+    hint.textContent = 'You are seeing the built-in summary instead. Everything else works the same: the 3D model, the notes and the V60 recipe. If Claude was just allowed for this page, press Try again.';
+    retry.hidden = true;
   } else {
     go.href = ARTIFACT_URL; go.textContent = 'Open in Claude'; go.dataset.act = '';
     hint.textContent = 'Opens Beanstory on claude.ai, where the notes are written on your own Claude account. Everything else works here without it.';
   }
   let seen = false; try { seen = localStorage.getItem('bs-signin-seen') === '1'; } catch (e) {}
-  if (!seen) setTimeout(() => { if (!AI.fn) openSignin(); }, 1200);
+  // Only pop up on its own when the viewer can actually do something about it
+  if (!seen && CL.why !== 'unavailable') setTimeout(() => { if (!AI.fn) openSignin(); }, 1200);
 }
 function openSignin(){ $('#signin-modal').hidden = false; $('#signin-go').focus(); }
 function closeSignin(){ $('#signin-modal').hidden = true; try { localStorage.setItem('bs-signin-seen', '1'); } catch (e) {} $('#signin-pill').focus(); }
@@ -1367,6 +1372,7 @@ $('#signin-pill').addEventListener('click', openSignin);
 $('#signin-later').addEventListener('click', closeSignin);
 $('#signin-go').addEventListener('click', async e => {
   try { localStorage.setItem('bs-signin-seen', '1'); } catch (err) {}
+  if (e.currentTarget.dataset.act === 'retry'){ e.preventDefault(); $('#signin-retry').click(); return; }
   if (e.currentTarget.dataset.act === 'perm'){
     e.preventDefault();
     try { const p = await window.claude.use('permissions'); await p.manage(); } catch (err) { $('#signin-diag').textContent = 'Could not open the panel. Use this page\'s Permissions menu in claude.ai instead.'; return; }
@@ -1374,7 +1380,7 @@ $('#signin-go').addEventListener('click', async e => {
   }
   setTimeout(() => $('#signin-modal').hidden = true, 300);
 });
-$('#signin-retry').addEventListener('click', async () => { $('#signin-diag').textContent = 'Checking…'; await initClaude(); if (AI.fn) $('#signin-modal').hidden = true; else offerSignin(); });
+$('#signin-retry').addEventListener('click', async () => { $('#signin-diag').textContent = 'Checking…'; await initClaude(); if (AI.fn) $('#signin-modal').hidden = true; else { offerSignin(); $('#signin-diag').textContent += ' Still not available.'; } });
 $('#signin-modal').addEventListener('click', e => { if (e.target.id === 'signin-modal') closeSignin(); });
 addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#signin-modal').hidden) closeSignin(); });
 if (!inClaude) offerSignin();
