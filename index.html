@@ -324,7 +324,7 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
     <div class="brand">
       <h1><span>From cherry to cup</span><b>Beanstory</b></h1>
       <p>Set what's on your bag. Watch the cherry, the bean and its cells change, and get a V60 recipe to match.</p>
-      <button type="button" class="signin-pill" id="signin-pill" hidden>✦ Sign in with Claude</button>
+      <button type="button" class="signin-pill" id="signin-pill" hidden>✦ Open in Claude</button>
     </div>
     <div class="chips" id="chips"></div>
 
@@ -412,14 +412,15 @@ details.more p{margin:8px 0 0;font-size:13.5px;color:var(--soft);line-height:1.6
   <div class="modal-card glass">
     <span class="label" style="color:var(--cyan)">Better with Claude</span>
     <h2 id="signin-title">Get notes written for your exact bag</h2>
-    <p id="signin-lead">Sign in with a free Claude account and Beanstory will:</p>
+    <p id="signin-lead">Open Beanstory in Claude (a free account works) and it will:</p>
     <ul id="signin-list">
       <li>explain your bean's altitude, process, roast and varietal in plain words</li>
       <li>tell you what that means for grinding and pouring</li>
       <li>answer your follow-up questions about the bag</li>
     </ul>
     <div class="modal-actions">
-      <a class="btn primary" id="signin-go" href="https://claude.ai/login" target="_blank" rel="noopener">Sign in with Claude</a>
+      <button type="button" class="btn primary" id="signin-act" hidden></button>
+      <a class="btn primary" id="signin-go" href="https://claude.ai/artifact/3969w5PfFhYuEE4vGUDut4" target="_blank" rel="noopener">Open in Claude</a>
       <button type="button" class="btn" id="signin-retry" hidden>Try again</button>
       <button type="button" class="btn" id="signin-later">Continue without</button>
     </div>
@@ -1325,41 +1326,39 @@ function applyBag(j){
   $('#bag-undo').addEventListener('click', () => { if (!BAG.prev) return; Object.assign(state, BAG.prev); BAG.prev = null; renderChips(); changed('bag'); bagStatus('Restored your previous settings.'); });
 }
 function bagAvailability(){
-  const ok = !!AI.fn;
-  $('#bag-go').textContent = ok ? 'Fill settings with Claude' : 'Sign in with Claude to use this';
-  const noPhoto = ok && !BAG.imagesOK;            // signed in, but this view can't send images: notes only
-  $('#bag-drop').hidden = noPhoto; $('#bag-nophoto').hidden = !noPhoto;
+  const ok = !!AI.fn, noPhoto = ok && !BAG.imagesOK;     // no Claude: nothing to fill with; no photos: notes only
+  $('#bag-drop').hidden = !ok || noPhoto; $('#bag-nophoto').hidden = !noPhoto; $('#bag-text').hidden = !ok;
+  $('#bag-go').textContent = ok ? 'Fill settings with Claude' : !window.claude?.use ? 'Open in Claude to use this' : !CL.checked ? 'Checking Claude…' : 'Why is this unavailable?';
   $('#bag-text').placeholder = noPhoto ? 'What\'s on the bag, e.g. "India, S795, washed + honey, barrel aged, light roast, roasted 20 Sep"'
     : 'Notes (optional): anything else from the bag, e.g. "washed + honey, whiskey barrel aged, 1,200 m, roasted 20 Sep"';
 }
 
-// Sign in with Claude: offered once to visitors who can't get the Claude-written notes
+// Claude-written notes: explained once to visitors who can't get them. Never asks anyone to sign in, since the failure is not about signing in.
 const ARTIFACT_URL = 'https://claude.ai/artifact/3969w5PfFhYuEE4vGUDut4';
 const inClaude = !!window.claude?.use;
 // Why Claude is not usable here: 'outside' (not inside claude.ai), 'unavailable' (inside, but this view cannot use it),
 // 'denied' (the viewer declined or switched it off for this page). Signed-in viewers can land in either of the last two.
-const CL = {why:'outside', perm:'?'};
+const CL = {why:'outside', perm:'?', checked:false};
 function offerSignin(){
   if (AI.fn) return;
   $('#signin-pill').hidden = false;
-  const go = $('#signin-go'), hint = $('#signin-hint'), title = $('#signin-title'), retry = $('#signin-retry');
+  const go = $('#signin-go'), act = $('#signin-act'), hint = $('#signin-hint'), title = $('#signin-title'), retry = $('#signin-retry');
   CL.why = !inClaude ? 'outside' : CL.perm === 'denied' ? 'denied' : 'unavailable';
-  retry.hidden = CL.why === 'outside';
   // Inside claude.ai the viewer is already signed in, so never ask them to sign in
   $('#signin-lead').hidden = $('#signin-list').hidden = CL.why !== 'outside';
-  $('#signin-pill').textContent = CL.why === 'outside' ? '✦ Sign in with Claude' : CL.why === 'denied' ? '✦ Allow Claude notes' : '✦ Claude notes unavailable';
+  $('#signin-pill').textContent = CL.why === 'outside' ? '✦ Open in Claude' : CL.why === 'denied' ? '✦ Allow Claude notes' : '✦ Claude notes unavailable';
+  go.hidden = CL.why !== 'outside'; act.hidden = CL.why !== 'denied'; retry.hidden = CL.why === 'outside';
+  retry.classList.toggle('primary', CL.why === 'unavailable');
   $('#signin-diag').textContent = inClaude ? `Status: Claude access is ${CL.perm === '?' ? 'not available in this view' : CL.perm}.` : '';
   if (CL.why === 'denied'){
     title.textContent = 'Claude is switched off for this page';
-    go.textContent = 'Open permissions'; go.removeAttribute('href'); go.dataset.act = 'perm';
+    act.textContent = 'Open permissions';
     hint.textContent = 'Allow Claude for this page in its Permissions menu, then press Try again. Everything else works without it.';
   } else if (CL.why === 'unavailable'){
     title.textContent = 'Live Claude notes are not available in this view';
-    go.textContent = 'Try again'; go.removeAttribute('href'); go.dataset.act = 'retry';
     hint.textContent = 'You are seeing the built-in summary instead. Everything else works the same: the 3D model, the notes and the V60 recipe. If Claude was just allowed for this page, press Try again.';
-    retry.hidden = true;
   } else {
-    go.href = ARTIFACT_URL; go.textContent = 'Open in Claude'; go.dataset.act = '';
+    go.href = ARTIFACT_URL; go.textContent = 'Open in Claude';
     hint.textContent = 'Opens Beanstory on claude.ai, where the notes are written on your own Claude account. Everything else works here without it.';
   }
   let seen = false; try { seen = localStorage.getItem('bs-signin-seen') === '1'; } catch (e) {}
@@ -1370,17 +1369,20 @@ function openSignin(){ $('#signin-modal').hidden = false; $('#signin-go').focus(
 function closeSignin(){ $('#signin-modal').hidden = true; try { localStorage.setItem('bs-signin-seen', '1'); } catch (e) {} $('#signin-pill').focus(); }
 $('#signin-pill').addEventListener('click', openSignin);
 $('#signin-later').addEventListener('click', closeSignin);
-$('#signin-go').addEventListener('click', async e => {
+$('#signin-go').addEventListener('click', () => { try { localStorage.setItem('bs-signin-seen', '1'); } catch (err) {} setTimeout(() => $('#signin-modal').hidden = true, 300); });
+$('#signin-act').addEventListener('click', async () => {
   try { localStorage.setItem('bs-signin-seen', '1'); } catch (err) {}
-  if (e.currentTarget.dataset.act === 'retry'){ e.preventDefault(); $('#signin-retry').click(); return; }
-  if (e.currentTarget.dataset.act === 'perm'){
-    e.preventDefault();
-    try { const p = await window.claude.use('permissions'); await p.manage(); } catch (err) { $('#signin-diag').textContent = 'Could not open the panel. Use this page\'s Permissions menu in claude.ai instead.'; return; }
-    initClaude(); return;
-  }
-  setTimeout(() => $('#signin-modal').hidden = true, 300);
+  try { const pm = await window.claude.use('permissions'); await pm.manage(); } catch (err) { $('#signin-diag').textContent = 'Could not open the panel. Use this page\'s Permissions menu in claude.ai instead.'; return; }
+  await initClaude(); if (AI.fn) $('#signin-modal').hidden = true; else offerSignin();
 });
-$('#signin-retry').addEventListener('click', async () => { $('#signin-diag').textContent = 'Checking…'; await initClaude(); if (AI.fn) $('#signin-modal').hidden = true; else { offerSignin(); $('#signin-diag').textContent += ' Still not available.'; } });
+$('#signin-retry').addEventListener('click', async () => {
+  const b = $('#signin-retry'), label = b.textContent; b.disabled = true; b.textContent = 'Checking…'; $('#signin-diag').textContent = '';
+  await initClaude();
+  b.disabled = false; b.textContent = label;
+  if (AI.fn){ $('#signin-modal').hidden = true; return; }
+  offerSignin();
+  $('#signin-diag').textContent = 'Checked just now: Claude is still not available in this view, so the built-in summary stays on.';
+});
 $('#signin-modal').addEventListener('click', e => { if (e.target.id === 'signin-modal') closeSignin(); });
 addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#signin-modal').hidden) closeSignin(); });
 if (!inClaude) offerSignin();
@@ -1390,7 +1392,7 @@ async function initClaude(){
   let fn = null, perm = '?';
   try { fn = await window.claude.use('sample'); } catch (e) {}
   try { const pm = await window.claude.use('permissions'); if (pm) perm = await pm.state('sample'); } catch (e) {}
-  CL.perm = perm;
+  CL.perm = perm; CL.checked = true;
   if (!fn || perm === 'denied'){ offerSignin(); bagAvailability(); return; }
   $('#signin-pill').hidden = true; $('#signin-modal').hidden = true;
   fn.limits().then(l => { BAG.imagesOK = !!l?.images; bagAvailability(); }).catch(() => bagAvailability());
